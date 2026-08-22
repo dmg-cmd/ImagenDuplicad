@@ -1,6 +1,6 @@
 [package]
 name = "imagen-duplicada"
-version = "0.1.5"
+version = "0.1.6"
 description = "Detector de imágenes duplicadas"
 edition = "2021"
 

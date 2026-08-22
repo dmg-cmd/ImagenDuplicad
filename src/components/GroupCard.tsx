@@ -58,6 +58,7 @@ export function GroupCard({ group, onDeleted }: Props) {
   const [comparing, setComparing] = useState<{ left: number; right: number } | null>(null);
   const [confirming, setConfirming] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
 
   const toggle = (path: string) => {
     setSelected((prev) => {
@@ -83,6 +84,7 @@ export function GroupCard({ group, onDeleted }: Props) {
     if (paths.length === 0) return;
     setBusy(true);
     setError(null);
+    setInfo(null);
     try {
       if (permanent) {
         await invoke("delete_permanent", { req: { paths } });
@@ -92,6 +94,9 @@ export function GroupCard({ group, onDeleted }: Props) {
       onDeleted(new Set(paths));
       setSelected(new Set());
       setConfirming(null);
+      setInfo(
+        `${paths.length} imagen(es) ${permanent ? "borrada(s) permanentemente" : "enviada(s) a la papelera"} · registrado en el historial`
+      );
     } catch (e) {
       setError(String(e));
     } finally {
@@ -155,6 +160,7 @@ export function GroupCard({ group, onDeleted }: Props) {
       </div>
 
       {error && <div className="group-error">{error}</div>}
+      {info && <div className="group-info">{info}</div>}
 
       <div className="image-row">
         {group.images.map((img, idx) => (

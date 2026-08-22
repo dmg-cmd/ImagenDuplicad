@@ -7,11 +7,11 @@ use image::imageops::FilterType;
 use rayon::prelude::*;
 use std::collections::HashMap;
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Mutex;
 use std::time::UNIX_EPOCH;
-use tauri::Emitter;
+use tauri::{Emitter, Manager};
 
 const PROGRESS_BATCH: usize = 50;
 
@@ -336,6 +336,75 @@ pub fn cancel_scan() -> Result<(), String> {
     Ok(())
 }
 
+fn history_file(app: &tauri::AppHandle) -> Result<PathBuf, String> {
+    let dir = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("No se pudo resolver el directorio de datos: {e}"))?;
+    std::fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    Ok(dir.join("historial_borrados.csv"))
+}
+
+fn csv_escape(s: &str) -> String {
+    format!("\"{}\"", s.replace('"', "\"\""))
+}
+
+fn registrar_historial(paths: &[&Path], permanent: bool, app: &tauri::AppHandle) {
+    let Ok(file) = history_file(app) else {
+        return;
+    };
+    let nueva = !file.exists();
+    let Ok(f) = std::fs::OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(&file)
+    else {
+        return;
+    };
+    use std::io::Write;
+    let mut w = std::io::BufWriter::new(f);
+    if nueva {
+        let _ = writeln!(w, "fecha,modo,ruta");
+    }
+    let modo = if permanent { "permanente" } else { "papelera" };
+    let fecha = chrono::Local::now().format("%Y-%m-%d %H:%M:%S");
+    for p in paths {
+        let ruta = p.to_string_lossy();
+        let _ = writeln!(w, "{},{},{}", fecha, modo, csv_escape(&ruta));
+    }
+}
+
+#[tauri::command]
+pub fn abrir_historial(app: tauri::AppHandle) -> Result<(), String> {
+    let file = history_file(&app)?;
+    if !file.exists() {
+        std::fs::write(&file, "fecha,modo,ruta\n")
+            .map_err(|e| format!("No se pudo crear el historial: {e}"))?;
+    }
+    #[cfg(target_os = "linux")]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(&file)
+            .spawn()
+            .map_err(|e| format!("No se pudo abrir el historial: {e}"))?;
+    }
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("explorer")
+            .arg(&file)
+            .spawn()
+            .map_err(|e| format!("No se pudo abrir el historial: {e}"))?;
+    }
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(&file)
+            .spawn()
+            .map_err(|e| format!("No se pudo abrir el historial: {e}"))?;
+    }
+    Ok(())
+}
+
 #[tauri::command]
 pub fn preview(path: String) -> Result<String, String> {
     let p = Path::new(&path);
@@ -408,7 +477,8 @@ pub fn image_diff(path_a: String, path_b: String) -> Result<String, String> {
     Ok(out_path.to_string_lossy().to_string())
 }
 
-fn delete(paths: &[String], to_trash: bool) -> Result<(), String> {
+fn delete(paths: &[String], to_trash: bool, app: &tauri::AppHandle) -> Result<(), String> {
+    let mut eliminados: Vec<&Path> = Vec::new();
     for p in paths {
         let path = Path::new(p);
         if !path.exists() {
@@ -421,16 +491,20 @@ fn delete(paths: &[String], to_trash: bool) -> Result<(), String> {
             fs::remove_file(path)
                 .map_err(|e| format!("No se pudo borrar {p}: {e}"))?;
         }
+        eliminados.push(path);
+    }
+    if !eliminados.is_empty() {
+        registrar_historial(&eliminados, !to_trash, app);
     }
     Ok(())
 }
 
 #[tauri::command]
-pub fn delete_to_trash(req: DeleteRequest) -> Result<(), String> {
-    delete(&req.paths, true)
+pub fn delete_to_trash(req: DeleteRequest, app: tauri::AppHandle) -> Result<(), String> {
+    delete(&req.paths, true, &app)
 }
 
 #[tauri::command]
-pub fn delete_permanent(req: DeleteRequest) -> Result<(), String> {
-    delete(&req.paths, false)
+pub fn delete_permanent(req: DeleteRequest, app: tauri::AppHandle) -> Result<(), String> {
+    delete(&req.paths, false, &app)
 }

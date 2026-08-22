@@ -166,6 +166,13 @@ export default function App() {
           </button>
         )}
         {folder && <span className="folder">{folder}</span>}
+        <button
+          className="btn"
+          onClick={() => invoke("abrir_historial").catch((e) => setError(String(e)))}
+          title="Abrir el registro CSV de imágenes borradas"
+        >
+          📄 Historial
+        </button>
         <label className="scan-option" title="Compara por contenido visual aunque cambien el tamaño, dimensiones o fecha (más lento)">
           <input
             type="checkbox"

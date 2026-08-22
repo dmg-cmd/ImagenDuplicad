@@ -653,6 +653,14 @@ body {
   border-bottom: 1px solid #e3b0a8;
 }
 
+.group-info {
+  background: #e7f6ec;
+  color: #1a7f4b;
+  padding: 8px 14px;
+  font-size: 13px;
+  border-bottom: 1px solid #bfe5cd;
+}
+
 .skipped-note {
   color: var(--probable-border);
   font-weight: 500;
