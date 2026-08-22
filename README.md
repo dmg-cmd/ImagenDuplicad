@@ -5,6 +5,22 @@ Compara por hash **SHA-256** (copias exactas) y metadatos **EXIF** (probables du
 
 > Guía completa y detallada: [`docs/README.md`](docs/README.md)
 
+## 📥 Descargar
+
+Instaladores listos para usar (sin necesidad de programar nada):
+
+**👉 [Descargar la última versión](https://github.com/dmg-cmd/ImagenDuplicad/releases/latest)**
+
+| Sistema | Archivo |
+|---|---|
+| Windows | `Imagen.Duplicada_*_x64-setup.exe` |
+| Linux | `.deb` (Debian/Ubuntu) o `.AppImage` (cualquier distro) |
+| macOS | `.dmg` |
+
+En esa página, despliega la sección **Assets** y descarga el archivo de tu sistema operativo.
+
+> También puedes probar las compilaciones más recientes (sin publicar) en la pestaña [Actions](https://github.com/dmg-cmd/ImagenDuplicad/actions): entra a la última ejecución y baja a **Artifacts** (requiere iniciar sesión en GitHub).
+
 ---
 
 ## Guía de uso
