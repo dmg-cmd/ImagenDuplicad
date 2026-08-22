@@ -57,12 +57,13 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   const [buscarSimilares, setBuscarSimilares] = useState(false);
   const [umbral, setUmbral] = useState(8);
+  const [filtro, setFiltro] = useState<"todos" | "exacto" | "probable">("todos");
   const [visibleGroups, setVisibleGroups] = useState(50);
   const deletedRef = useRef<Set<string>>(new Set());
 
   useEffect(() => {
     setVisibleGroups(50);
-  }, [groups]);
+  }, [groups, filtro]);
 
   useEffect(() => {
     let unlistenProgress: UnlistenFn | undefined;
@@ -152,6 +153,9 @@ export default function App() {
   };
 
   const total = groups.reduce((acc, g) => acc + g.images.length, 0);
+  const filtrados =
+    filtro === "todos" ? groups : groups.filter((g) => g.confidence === filtro);
+  const totalFiltrado = filtrados.reduce((acc, g) => acc + g.images.length, 0);
 
   return (
     <div className="app">
@@ -234,26 +238,53 @@ export default function App() {
         <div className="summary">
           <strong>{groups.length}</strong> grupo(s) de duplicados ·{" "}
           <strong>{total}</strong> imágenes
+          <span className="filtro-grupos">
+            <button
+              className={`tab ${filtro === "todos" ? "active" : ""}`}
+              onClick={() => setFiltro("todos")}
+            >
+              Todos
+            </button>
+            <button
+              className={`tab ${filtro === "exacto" ? "active" : ""}`}
+              onClick={() => setFiltro("exacto")}
+              title="Copias idénticas byte a byte"
+            >
+              Exactos ({groups.filter((g) => g.confidence === "exacto").length})
+            </button>
+            <button
+              className={`tab ${filtro === "probable" ? "active" : ""}`}
+              onClick={() => setFiltro("probable")}
+              title="Mismos metadatos y contenido visual similar"
+            >
+              Probables ({groups.filter((g) => g.confidence === "probable").length})
+            </button>
+          </span>
+          {filtrados.length !== groups.length && (
+            <span className="skipped-note">
+              · mostrando {filtrados.length} grupo(s), {totalFiltrado} imágenes
+            </span>
+          )}
           {scanning && <span className="skipped-note"> · escaneo en curso…</span>}
           {!scanning && skipped > 0 && (
             <span className="skipped-note"> · {skipped} archivo(s) no legibles omitidos</span>
           )}
-          {groups.length > visibleGroups && (
+          {filtrados.length > visibleGroups && (
             <span className="skipped-note"> · mostrando {visibleGroups}</span>
           )}
         </div>
       )}
 
       <main className="groups">
-        {groups.slice(0, visibleGroups).map((g) => (
+        {filtrados.slice(0, visibleGroups).map((g) => (
           <GroupCard key={g.id} group={g} onDeleted={removeDeleted} />
         ))}
       </main>
 
-      {groups.length > visibleGroups && (
+      {filtrados.length > visibleGroups && (
         <div className="load-more">
           <button className="btn primary" onClick={() => setVisibleGroups((v) => v + 100)}>
-            Mostrar más grupos ({groups.length - visibleGroups} restantes)
+            Mostrar más grupos ({filtrados.length - visibleGroups} restantes)
           </button>
         </div>
       )}

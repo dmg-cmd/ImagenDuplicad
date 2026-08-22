@@ -71,6 +71,27 @@ body {
   background: var(--panel);
 }
 
+.filtro-grupos {
+  display: inline-flex;
+  gap: 4px;
+}
+
+.filtro-grupos .tab {
+  border: 1px solid var(--border);
+  background: transparent;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.filtro-grupos .tab.active {
+  background: #2563eb;
+  border-color: #2563eb;
+  color: #fff;
+  font-weight: 600;
+}
+
 .btn {
   border: 1px solid var(--border);
   background: var(--panel);
