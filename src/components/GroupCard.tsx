@@ -4,6 +4,7 @@ import type { DupGroup, ImageInfo } from "../types";
 import { formatBytes, dims } from "../lib/format";
 import { enqueue, useInView } from "../lib/thumbQueue";
 import { ImageViewer } from "./ImageViewer";
+import { CompareViewer } from "./CompareViewer";
 import { ConfirmDialog } from "./ConfirmDialog";
 
 const thumbCache = new Map<string, string>();
@@ -54,6 +55,7 @@ export function GroupCard({ group, onDeleted }: Props) {
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState(false);
   const [previewIndex, setPreviewIndex] = useState<number | null>(null);
+  const [comparing, setComparing] = useState<{ left: number; right: number } | null>(null);
   const [confirming, setConfirming] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -121,6 +123,21 @@ export function GroupCard({ group, onDeleted }: Props) {
             Limpiar
           </button>
           <button
+            onClick={() => {
+              const picked = [...selected]
+                .map((p) => group.images.findIndex((i) => i.path === p))
+                .sort((a, b) => a - b);
+              setComparing(
+                selected.size >= 2
+                  ? { left: picked[0], right: picked[1] }
+                  : { left: 0, right: 1 }
+              );
+            }}
+            className="btn"
+          >
+            Comparar de a dos{selected.size >= 2 ? " (seleccionadas)" : ""}
+          </button>
+          <button
             onClick={() => setConfirming(false)}
             className="btn danger"
             disabled={selected.size === 0 || busy}
@@ -173,6 +190,15 @@ export function GroupCard({ group, onDeleted }: Props) {
           index={previewIndex}
           onClose={() => setPreviewIndex(null)}
           onNavigate={setPreviewIndex}
+        />
+      )}
+
+      {comparing && group.images.length >= 2 && (
+        <CompareViewer
+          images={group.images}
+          initialLeft={comparing.left}
+          initialRight={comparing.right}
+          onClose={() => setComparing(null)}
         />
       )}
 

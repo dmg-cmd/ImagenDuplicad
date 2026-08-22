@@ -40,9 +40,15 @@ pub fn group(images: Vec<ImageInfo>) -> Vec<DupGroup> {
         }
     }
     for (_, idxs) in by_sig {
-        if idxs.len() > 1 {
-            for &j in &idxs[1..] {
-                union(&mut parent, idxs[0], j);
+        if idxs.len() < 2 {
+            continue;
+        }
+        for a in 0..idxs.len() {
+            for b in (a + 1)..idxs.len() {
+                let (ia, ib) = (&images[idxs[a]], &images[idxs[b]]);
+                if crate::hasher::visualmente_similares(ia.dhash, ib.dhash) {
+                    union(&mut parent, idxs[a], idxs[b]);
+                }
             }
         }
     }
@@ -115,6 +121,21 @@ mod tests {
             height: Some(h),
             hash: hash.to_string(),
             thumbnail: None,
+            dhash: None,
+        }
+    }
+
+    fn img_dhash(
+        path: &str,
+        hash: &str,
+        date: Option<&str>,
+        w: u32,
+        h: u32,
+        dhash: u64,
+    ) -> ImageInfo {
+        ImageInfo {
+            dhash: Some(dhash),
+            ..img(path, hash, date, w, h)
         }
     }
 
@@ -134,10 +155,10 @@ mod tests {
     #[test]
     fn groups_probable_by_metadata() {
         let imgs = vec![
-            img("a/original.jpg", "hashA", Some("2022-03-03 12:00:00"), 1024, 768),
-            img("b/recodificado.jpg", "hashB", Some("2022-03-03 12:00:00"), 1024, 768),
-            img("c/otro.jpg", "hashC", Some("2022-03-03 12:00:00"), 1024, 768),
-            img("d/distinto.jpg", "hashD", Some("2022-03-04 12:00:00"), 1024, 768),
+            img_dhash("a/original.jpg", "hashA", Some("2022-03-03 12:00:00"), 1024, 768, 0xFF00FF00FF00FF00),
+            img_dhash("b/recodificado.jpg", "hashB", Some("2022-03-03 12:00:00"), 1024, 768, 0xFF00FF00FF00FF01),
+            img_dhash("c/otro.jpg", "hashC", Some("2022-03-03 12:00:00"), 1024, 768, 0xFF00FF00FF00FF02),
+            img_dhash("d/distinto.jpg", "hashD", Some("2022-03-03 12:00:00"), 1024, 768, 0x00FF00FF00FF00FF),
         ];
         let groups = group(imgs);
         assert_eq!(groups.len(), 1);
@@ -146,11 +167,50 @@ mod tests {
     }
 
     #[test]
+    fn does_not_group_burst_photos_with_same_metadata() {
+        let imgs = vec![
+            img_dhash("a/r1.jpg", "hashA", Some("2022-03-03 12:00:00"), 4000, 3000, 0xFFFFFFFFFFFFFFFF),
+            img_dhash("b/r2.jpg", "hashB", Some("2022-03-03 12:00:00"), 4000, 3000, 0x0000000000000000),
+            img_dhash("c/r3.jpg", "hashC", Some("2022-03-03 12:00:00"), 4000, 3000, 0xAAAAAAAAAAAAAAAA),
+        ];
+        let groups = group(imgs);
+        assert_eq!(groups.len(), 0);
+    }
+
+    #[test]
+    fn groups_recodificada_with_similar_dhash() {
+        let imgs = vec![
+            img_dhash("a/original.jpg", "hashA", Some("2022-03-03 12:00:00"), 1024, 768, 0x123456789ABCDEF0),
+            img_dhash(
+                "b/recodificado.jpg",
+                "hashB",
+                Some("2022-03-03 12:00:00"),
+                1024,
+                768,
+                0x123456789ABCDEF6,
+            ),
+        ];
+        let groups = group(imgs);
+        assert_eq!(groups.len(), 1);
+        assert_eq!(groups[0].confidence, "probable");
+    }
+
+    #[test]
+    fn does_not_group_probable_without_dhash() {
+        let imgs = vec![
+            img("a/1.jpg", "hashA", Some("2022-03-03 12:00:00"), 100, 100),
+            img("b/2.jpg", "hashB", Some("2022-03-03 12:00:00"), 100, 100),
+        ];
+        let groups = group(imgs);
+        assert_eq!(groups.len(), 0);
+    }
+
+    #[test]
     fn merges_exact_and_metadata_groups() {
         let imgs = vec![
             img("a/original.png", "hash1", Some("2020-01-01 10:00:00"), 800, 600),
-            img("b/copia.png", "hash1", Some("2020-01-01 10:00:00"), 800, 600),
-            img("c/recodificado.png", "hash2", Some("2020-01-01 10:00:00"), 800, 600),
+            img_dhash("b/copia.png", "hash1", Some("2020-01-01 10:00:00"), 800, 600, 0xFF00FF00FF00FF00),
+            img_dhash("c/recodificado.png", "hash2", Some("2020-01-01 10:00:00"), 800, 600, 0xFF00FF00FF00FF03),
         ];
         let groups = group(imgs);
         assert_eq!(groups.len(), 1);

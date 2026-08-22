@@ -23,6 +23,8 @@ pub struct ImageInfo {
     pub height: Option<u32>,
     pub hash: String,
     pub thumbnail: Option<String>,
+    #[serde(skip_serializing)]
+    pub dhash: Option<u64>,
 }
 
 #[derive(Serialize, Clone)]

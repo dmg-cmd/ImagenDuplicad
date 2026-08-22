@@ -232,16 +232,18 @@ pub async fn scan_folder(
                 return None;
             }
             let path = &paths[idx];
-            let hash = (|| -> Option<String> {
+            let hash = (|| -> Option<(String, Option<u64>)> {
                 let data = reader::FileData::open(path)?;
                 let bytes = data.bytes();
-                Some(crate::hasher::sha256_bytes(bytes))
+                Some((
+                    crate::hasher::sha256_bytes(bytes),
+                    crate::hasher::dhash_bytes(bytes),
+                ))
             })();
-            let Some(hash) = hash else {
+            let Some((hash, dh)) = hash else {
                 skipped.fetch_add(1, Ordering::Relaxed);
                 return None;
             };
-
             let (_, ref file_name, ref dir_str, size_bytes, ref modified, ref exif) =
                 meta_map[&idx];
 
@@ -262,6 +264,7 @@ pub async fn scan_folder(
                 height: exif.height,
                 hash,
                 thumbnail: None,
+                dhash: dh,
             };
 
             emit_live_duplicate(&app, &seen_hashes, &img);
