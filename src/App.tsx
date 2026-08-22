@@ -58,6 +58,15 @@ export default function App() {
   const [buscarSimilares, setBuscarSimilares] = useState(false);
   const [umbral, setUmbral] = useState(8);
   const [filtro, setFiltro] = useState<"todos" | "exacto" | "probable">("todos");
+  const [excluidas, setExcluidas] = useState<string[]>(() => {
+    try {
+      return JSON.parse(localStorage.getItem("carpetas-excluidas") ?? "[]");
+    } catch {
+      return [];
+    }
+  });
+  const [panelExcluidas, setPanelExcluidas] = useState(false);
+  const [nuevaExcluida, setNuevaExcluida] = useState("");
   const [visibleGroups, setVisibleGroups] = useState(50);
   const deletedRef = useRef<Set<string>>(new Set());
 
@@ -114,6 +123,7 @@ export default function App() {
         dir,
         buscarSimilares,
         umbral,
+        excluidas,
       });
       const remaining = result.groups.filter(
         (g) =>
@@ -138,6 +148,21 @@ export default function App() {
     } catch {
       // ignorar
     }
+  };
+
+  const agregarExcluida = () => {
+    const ruta = nuevaExcluida.trim();
+    if (!ruta || excluidas.includes(ruta)) return;
+    const next = [...excluidas, ruta];
+    setExcluidas(next);
+    localStorage.setItem("carpetas-excluidas", JSON.stringify(next));
+    setNuevaExcluida("");
+  };
+
+  const quitarExcluida = (ruta: string) => {
+    const next = excluidas.filter((e) => e !== ruta);
+    setExcluidas(next);
+    localStorage.setItem("carpetas-excluidas", JSON.stringify(next));
   };
 
   const removeDeleted = (deletedPaths: Set<string>) => {
@@ -171,6 +196,13 @@ export default function App() {
         )}
         {folder && <span className="folder">{folder}</span>}
         <button
+          className={`btn ${panelExcluidas ? "primary" : ""}`}
+          onClick={() => setPanelExcluidas((v) => !v)}
+          title="Carpetas que el escaneo ignorará"
+        >
+          🚫 Carpetas excluidas{excluidas.length > 0 ? ` (${excluidas.length})` : ""}
+        </button>
+        <button
           className="btn"
           onClick={() => invoke("abrir_historial").catch((e) => setError(String(e)))}
           title="Abrir el registro CSV de imágenes borradas"
@@ -199,6 +231,49 @@ export default function App() {
           <option value={16}>Muy laxa</option>
         </select>
       </header>
+
+      {panelExcluidas && (
+        <div className="excluidas-panel">
+          <p className="excluidas-explicacion">
+            <strong>¿Qué hace esto?</strong> El escaneo <strong>ignorará por completo</strong> estas
+            carpetas y todas sus subcarpetas: los archivos que contienen no se analizan ni aparecen
+            en los resultados. Úsalo para proteger copias de seguridad de borrados accidentales o
+            para saltar carpetas que no quieres revisar. La lista se guarda y se aplica en cada escaneo.
+          </p>
+          <div className="excluidas-form">
+            <input
+              type="text"
+              value={nuevaExcluida}
+              placeholder="/ruta/de/la/carpeta/a/excluir"
+              onChange={(e) => setNuevaExcluida(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && agregarExcluida()}
+            />
+            <button className="btn" onClick={agregarExcluida} disabled={!nuevaExcluida.trim()}>
+              Añadir
+            </button>
+          </div>
+          {excluidas.length > 0 ? (
+            <ul className="excluidas-lista">
+              {excluidas.map((ruta) => (
+                <li key={ruta}>
+                  <span title={ruta}>{ruta}</span>
+                  <button
+                    className="btn quitar"
+                    onClick={() => quitarExcluida(ruta)}
+                    title="Volver a incluir esta carpeta en el escaneo"
+                  >
+                    ✕ Quitar
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="excluidas-vacio">
+              No hay carpetas excluidas: el escaneo analiza todo lo que esté dentro de la carpeta elegida.
+            </p>
+          )}
+        </div>
+      )}
 
       {scanning && progress && (
         <div className="progress-section">

@@ -92,6 +92,74 @@ body {
   font-weight: 600;
 }
 
+.excluidas-panel {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  margin-bottom: 16px;
+}
+
+.excluidas-explicacion {
+  margin: 0 0 10px;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.excluidas-form {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.excluidas-form input {
+  flex: 1;
+  font-size: 13px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-family: monospace;
+}
+
+.excluidas-lista {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.excluidas-lista li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  font-size: 13px;
+  font-family: monospace;
+  background: rgba(0, 0, 0, 0.04);
+  border-radius: 6px;
+  padding: 6px 10px;
+}
+
+.excluidas-lista li span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.btn.quitar {
+  color: var(--danger);
+  white-space: nowrap;
+}
+
+.excluidas-vacio {
+  margin: 0;
+  font-size: 13px;
+  color: var(--muted);
+}
+
 .btn {
   border: 1px solid var(--border);
   background: var(--panel);

@@ -85,13 +85,14 @@ pub async fn scan_folder(
     app: tauri::AppHandle,
     buscar_similares: Option<bool>,
     umbral: Option<u32>,
+    excluidas: Option<Vec<String>>,
 ) -> Result<ScanResult, String> {
     CANCEL_TOKEN.reset();
 
     let buscar = buscar_similares.unwrap_or(false);
     let umbral_dhash = umbral.unwrap_or(crate::hasher::DHASH_THRESHOLD);
 
-    let paths = scanner::scan_images(&dir);
+    let paths = scanner::scan_images(&dir, &excluidas.unwrap_or_default());
     let total = paths.len();
 
     if total == 0 {
