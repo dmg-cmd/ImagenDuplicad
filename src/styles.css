@@ -605,6 +605,29 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
+.compare-canvas.diff {
+  cursor: grab;
+  background: #111;
+}
+
+.compare-canvas.diff.dragging {
+  cursor: grabbing;
+}
+
+.compare-canvas .diff-img {
+  position: static;
+  max-width: 100%;
+  max-height: 100%;
+  width: auto;
+  height: auto;
+  object-fit: contain;
+  will-change: transform;
+}
+
+.diff-legend {
+  color: var(--muted);
+}
+
 .group-error {
   background: var(--danger-bg);
   color: var(--danger);

@@ -6,13 +6,17 @@ import { formatBytes, dims } from "../lib/format";
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 12;
 const ZOOM_STEP = 1.25;
+const DIFF_ZOOM = 6;
+const DIFF_THRESHOLD = 20;
+const DIFF_MAX_WIDTH = 1600;
 
-type Mode = "lado" | "cortina" | "fundido";
+type Mode = "lado" | "cortina" | "fundido" | "diff";
 
 const MODES: { id: Mode; label: string }[] = [
   { id: "lado", label: "Lado a lado" },
   { id: "cortina", label: "Cortina" },
   { id: "fundido", label: "Fundido" },
+  { id: "diff", label: "Diferencia" },
 ];
 
 interface Props {
@@ -30,6 +34,66 @@ interface Transform {
 
 const IDENTITY: Transform = { zoom: 1, x: 0, y: 0 };
 
+function loadImage(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => resolve(img);
+    img.onerror = () => reject(new Error("no se pudo cargar la imagen"));
+    img.src = src;
+  });
+}
+
+async function computeDiff(srcA: string, srcB: string): Promise<string> {
+  const [a, b] = await Promise.all([loadImage(srcA), loadImage(srcB)]);
+  const w0 = Math.min(a.naturalWidth, b.naturalWidth);
+  const h0 = Math.min(a.naturalHeight, b.naturalHeight);
+  if (w0 === 0 || h0 === 0) throw new Error("dimensiones inválidas");
+  const cw = Math.min(DIFF_MAX_WIDTH, w0);
+  const ch = Math.max(1, Math.round((h0 * cw) / w0));
+
+  const pixelsOf = (img: HTMLImageElement): Uint8ClampedArray => {
+    const c = document.createElement("canvas");
+    c.width = cw;
+    c.height = ch;
+    const ctx = c.getContext("2d", { willReadFrequently: true })!;
+    ctx.drawImage(img, 0, 0, cw, ch);
+    return ctx.getImageData(0, 0, cw, ch).data;
+  };
+
+  const pa = pixelsOf(a);
+  const pb = pixelsOf(b);
+  const out = new ImageData(cw, ch);
+
+  for (let i = 0; i < pa.length; i += 4) {
+    const d =
+      (Math.abs(pa[i] - pb[i]) +
+        Math.abs(pa[i + 1] - pb[i + 1]) +
+        Math.abs(pa[i + 2] - pb[i + 2])) /
+      3;
+    const o = out.data;
+    if (d > DIFF_THRESHOLD) {
+      const k = Math.min(1, d / 80);
+      o[i] = 220 * k + 20;
+      o[i + 1] = 15;
+      o[i + 2] = 25;
+      o[i + 3] = 255;
+    } else {
+      const lum = 0.299 * pa[i] + 0.587 * pa[i + 1] + 0.114 * pa[i + 2];
+      const g = 40 + lum * 0.3;
+      o[i] = g;
+      o[i + 1] = g;
+      o[i + 2] = g;
+      o[i + 3] = 255;
+    }
+  }
+
+  const oc = document.createElement("canvas");
+  oc.width = cw;
+  oc.height = ch;
+  oc.getContext("2d")!.putImageData(out, 0, 0);
+  return oc.toDataURL("image/png");
+}
+
 export function CompareViewer({ images, initialLeft, initialRight, onClose }: Props) {
   const [leftIdx, setLeftIdx] = useState(initialLeft);
   const [rightIdx, setRightIdx] = useState(
@@ -40,6 +104,8 @@ export function CompareViewer({ images, initialLeft, initialRight, onClose }: Pr
   const [split, setSplit] = useState(50);
   const [opacity, setOpacity] = useState(100);
   const [dragging, setDragging] = useState(false);
+  const [diffUrl, setDiffUrl] = useState<string | null>(null);
+  const [diffError, setDiffError] = useState<string | null>(null);
   const dragStart = useRef<{ mx: number; my: number; tx: number; ty: number } | null>(null);
   const paneRefs = useRef<(HTMLDivElement | null)[]>([]);
   const canvasRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -136,6 +202,34 @@ export function CompareViewer({ images, initialLeft, initialRight, onClose }: Pr
     dragStart.current = null;
   };
 
+  const zoomToPoint = (canvas: HTMLDivElement, clientX: number, clientY: number) => {
+    const rect = canvas.getBoundingClientRect();
+    const cx = clientX - rect.left - rect.width / 2;
+    const cy = clientY - rect.top - rect.height / 2;
+    const px = (cx - transform.x) / transform.zoom;
+    const py = (cy - transform.y) / transform.zoom;
+    const newZoom = Math.min(MAX_ZOOM, Math.max(transform.zoom * 2.5, DIFF_ZOOM));
+    setTransform({ zoom: newZoom, x: -newZoom * px, y: -newZoom * py });
+  };
+
+  useEffect(() => {
+    if (mode !== "diff") {
+      setDiffUrl(null);
+      setDiffError(null);
+      return;
+    }
+    let alive = true;
+    setDiffUrl(null);
+    setDiffError(null);
+    computeDiff(srcOf(left), srcOf(right))
+      .then((url) => alive && setDiffUrl(url))
+      .catch(() => alive && setDiffError("No se pudo calcular la diferencia entre estas imágenes"));
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode, leftIdx, rightIdx]);
+
   useEffect(() => {
     const handlers = canvasRefs.current.map((canvas) => {
       const fn = (e: WheelEvent) => {
@@ -148,7 +242,7 @@ export function CompareViewer({ images, initialLeft, initialRight, onClose }: Pr
     return () => {
       for (const [canvas, fn] of handlers) canvas?.removeEventListener("wheel", fn);
     };
-  }, [zoomBy]);
+  }, [zoomBy, mode]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -211,7 +305,7 @@ export function CompareViewer({ images, initialLeft, initialRight, onClose }: Pr
       onPointerMove={(e) => onCanvasPointerMove(e, 0)}
       onPointerUp={endDrag}
       onPointerLeave={endDrag}
-      onDoubleClick={resetView}
+      onDoubleClick={(e) => zoomToPoint(e.currentTarget, e.clientX, e.clientY)}
     >
       <div
         className="compare-stack"
@@ -317,7 +411,7 @@ export function CompareViewer({ images, initialLeft, initialRight, onClose }: Pr
                     onPointerMove={(e) => onCanvasPointerMove(e, i)}
                     onPointerUp={endDrag}
                     onPointerLeave={endDrag}
-                    onDoubleClick={resetView}
+                    onDoubleClick={(e) => zoomToPoint(e.currentTarget, e.clientX, e.clientY)}
                   >
                     <img
                       src={convertFileSrc(img.path)}
@@ -332,6 +426,43 @@ export function CompareViewer({ images, initialLeft, initialRight, onClose }: Pr
                 </div>
               );
             })}
+          </div>
+        ) : mode === "diff" ? (
+          <div className="compare-body single">
+            <div className="compare-pane">
+              <div className="compare-pane-head">
+                <span className="side-tag izq">{leftIdx + 1}. {left.file_name}</span>
+                <span className="side-tag der">{rightIdx + 1}. {right.file_name}</span>
+              </div>
+              <div
+                className={`compare-canvas diff ${dragging ? "dragging" : ""}`}
+                ref={(el) => (canvasRefs.current[0] = el)}
+                onPointerDown={(e) => onCanvasPointerDown(e, 0)}
+                onPointerMove={(e) => onCanvasPointerMove(e, 0)}
+                onPointerUp={endDrag}
+                onPointerLeave={endDrag}
+                onDoubleClick={(e) => zoomToPoint(e.currentTarget, e.clientX, e.clientY)}
+              >
+                {diffUrl ? (
+                  <img
+                    className="diff-img"
+                    src={diffUrl}
+                    alt="Mapa de diferencias"
+                    draggable={false}
+                    style={{
+                      transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.zoom})`,
+                    }}
+                  />
+                ) : diffError ? (
+                  <div className="no-thumb">{diffError}</div>
+                ) : (
+                  <div className="no-thumb">Calculando diferencias...</div>
+                )}
+              </div>
+              <div className="compare-pane-meta">
+                <span className="diff-legend">🔴 Zonas distintas · ⬛ Zonas iguales (atenuadas)</span>
+              </div>
+            </div>
           </div>
         ) : (
           <div className="compare-body single">
@@ -367,10 +498,12 @@ export function CompareViewer({ images, initialLeft, initialRight, onClose }: Pr
 
         <div className="compare-help">
           {mode === "lado"
-            ? "Rueda: zoom sincronizado · Arrastrar: mover · Doble clic: ajustar · ←/→: cambiar par · Esc: salir"
+            ? "Rueda: zoom sincronizado · Arrastrar: mover · Doble clic: zoom al punto · ←/→: cambiar par · Esc: salir"
             : mode === "cortina"
-              ? "Arrastrar: mover la cortina · Rueda: zoom sincronizado · Doble clic: ajustar · Esc: salir"
-              : "Mueve el control de opacidad para hacer el fundido · Rueda: zoom · Doble clic: ajustar · Esc: salir"}
+              ? "Arrastrar: mover la cortina · Rueda: zoom sincronizado · Doble clic: zoom al punto · Esc: salir"
+              : mode === "fundido"
+                ? "Mueve el control de opacidad para hacer el fundido · Rueda: zoom · Doble clic: zoom al punto · Esc: salir"
+                : "Rojo = píxeles distintos entre ambas imágenes · Rueda: zoom · Arrastrar: mover · Doble clic: zoom al punto"}
           {" · "}
           Zoom {Math.round(transform.zoom * 100)}%
         </div>
