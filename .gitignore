@@ -1,0 +1,41 @@
+# Node
+node_modules/
+dist/
+
+# Rust / Tauri
+src-tauri/target/
+src-tauri/gen/
+
+# Artefactos locales de desarrollo Tauri
+7media*/
+src-tauri/7media*/
+
+# Entorno y secretos
+.env
+.env.*
+*.key
+*.pem
+
+# Salidas de compilación y videos
+*.mp4
+*.app
+*.dmg
+*.exe
+*.msi
+*.deb
+*.rpm
+*.AppImage
+
+# Cachés de miniaturas
+imagen-duplicada-thumbs/
+.thumbs/
+
+# Sistema operativo
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editores
+.vscode/
+.idea/
+*.swp

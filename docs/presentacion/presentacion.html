@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Imagen Duplicada - Presentacion</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    background: #0d1117;
+    color: #e6edf3;
+    overflow: hidden;
+    height: 100vh;
+  }
+
+  .slide {
+    display: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    padding: 60px 80px;
+    text-align: center;
+    animation: fadeIn 0.6s ease-out;
+  }
+
+  .slide.active { display: flex; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .slide-title {
+    font-size: 52px;
+    font-weight: 700;
+    margin-bottom: 12px;
+    background: linear-gradient(135deg, #58a6ff, #bc8cff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .slide-subtitle {
+    font-size: 22px;
+    color: #8b949e;
+    margin-bottom: 40px;
+  }
+
+  .slide h2 {
+    font-size: 38px;
+    font-weight: 700;
+    margin-bottom: 16px;
+    color: #58a6ff;
+  }
+
+  .slide h3 {
+    font-size: 26px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    color: #bc8cff;
+  }
+
+  .slide p, .slide li {
+    font-size: 20px;
+    line-height: 1.7;
+    color: #c9d1d9;
+    max-width: 900px;
+  }
+
+  .slide ul {
+    text-align: left;
+    list-style: none;
+    padding: 0;
+  }
+
+  .slide li {
+    padding: 10px 0;
+    padding-left: 30px;
+    position: relative;
+  }
+
+  .slide li::before {
+    content: "\25B6";
+    position: absolute;
+    left: 0;
+    color: #58a6ff;
+    font-size: 14px;
+    top: 14px;
+  }
+
+  .screenshot-container {
+    margin: 30px 0;
+    border: 2px solid #30363d;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+    max-width: 80%;
+  }
+
+  .screenshot-container img {
+    width: 100%;
+    display: block;
+  }
+
+  .screenshot-caption {
+    background: #161b22;
+    padding: 12px 20px;
+    font-size: 16px;
+    color: #8b949e;
+    text-align: center;
+    border-top: 1px solid #30363d;
+  }
+
+  .badge {
+    display: inline-block;
+    padding: 6px 16px;
+    border-radius: 999px;
+    font-size: 16px;
+    font-weight: 600;
+    margin: 4px;
+  }
+
+  .badge-exact { background: #1a3a5c; color: #58a6ff; }
+  .badge-probable { background: #3d2e00; color: #e3b341; }
+  .badge-papelera { background: #3d1414; color: #f85149; }
+  .badge-safe { background: #1a3d1a; color: #3fb950; }
+
+  .feature-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+    margin: 30px 0;
+    max-width: 800px;
+  }
+
+  .feature-card {
+    background: #161b22;
+    border: 1px solid #30363d;
+    border-radius: 12px;
+    padding: 24px;
+    text-align: left;
+  }
+
+  .feature-card h4 {
+    font-size: 18px;
+    color: #58a6ff;
+    margin-bottom: 8px;
+  }
+
+  .feature-card p {
+    font-size: 15px;
+    color: #8b949e;
+    line-height: 1.5;
+  }
+
+  .progress-bar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #58a6ff, #bc8cff);
+    transition: width 0.3s;
+    z-index: 100;
+  }
+
+  .nav-hint {
+    position: fixed;
+    bottom: 20px;
+    right: 30px;
+    font-size: 14px;
+    color: #484f58;
+  }
+
+  .highlight {
+    color: #58a6ff;
+    font-weight: 600;
+  }
+
+  .two-col {
+    display: flex;
+    gap: 40px;
+    align-items: flex-start;
+    text-align: left;
+  }
+
+  .two-col > div { flex: 1; }
+
+  .tech-tag {
+    display: inline-block;
+    background: #1c2128;
+    border: 1px solid #30363d;
+    border-radius: 6px;
+    padding: 4px 12px;
+    font-size: 14px;
+    margin: 3px;
+    color: #8b949e;
+  }
+</style>
+</head>
+<body>
+
+<div class="progress-bar" id="progressBar"></div>
+
+<!-- Slide 1: Portada -->
+<div class="slide active" id="s1">
+  <div class="slide-title">Imagen Duplicada</div>
+  <div class="slide-subtitle">Detector inteligente de imagenes duplicadas</div>
+  <p style="font-size: 18px; color: #8b949e; margin-top: 20px;">
+    Compara por hash SHA-256 y metadatos EXIF para encontrar<br>
+    copias exactas y probables duplicados recodificados
+  </p>
+  <div style="margin-top: 40px;">
+    <span class="tech-tag">Tauri v2</span>
+    <span class="tech-tag">Rust</span>
+    <span class="tech-tag">React</span>
+    <span class="tech-tag">TypeScript</span>
+    <span class="tech-tag">EXIF</span>
+    <span class="tech-tag">SHA-256</span>
+  </div>
+</div>
+
+<!-- Slide 2: Problema -->
+<div class="slide" id="s2">
+  <h2>El problema</h2>
+  <p style="margin-bottom: 30px;">
+    Con el tiempo, acumulamos cientos o miles de imagenes duplicadas
+    en nuestro disco duro, con diferentes nombres y formatos.
+  </p>
+  <div class="feature-grid">
+    <div class="feature-card">
+      <h4>Nombres distintos</h4>
+      <p>Una misma foto puede llamarse IMG_001.jpg, foto-playa-2024.png, etc.</p>
+    </div>
+    <div class="feature-card">
+      <h4>Recodificada</h4>
+      <p>La misma imagen guardada en distintas calidades genera bytes diferentes.</p>
+    </div>
+    <div class="feature-card">
+      <h4>Espera... es la misma</h4>
+      <p>Misma fecha, misma camara, mismas dimensiones. Solo cambio el nombre.</p>
+    </div>
+    <div class="feature-card">
+      <h4>Manual es imposible</h4>
+      <p>Con miles de imagenes, comparar una por una no es viable.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Slide 3: Solucion -->
+<div class="slide" id="s3">
+  <h2>La solucion</h2>
+  <p style="margin-bottom: 30px;">
+    <span class="highlight">Imagen Duplicada</span> escanea tu carpeta y agrupa automaticamente
+    las imagenes duplicadas usando dos metodos de comparacion.
+  </p>
+  <div class="two-col">
+    <div>
+      <h3 style="font-size: 22px;">Hash SHA-256</h3>
+      <ul>
+        <li>Calcula la huella digital de cada archivo</li>
+        <li>Mismo hash = misma imagen, sin importar el nombre</li>
+        <li>Deteccion 100% precisa para copias exactas</li>
+      </ul>
+    </div>
+    <div>
+      <h3 style="font-size: 22px;">Metadatos EXIF</h3>
+      <ul>
+        <li>Extrae fecha, camara y dimensiones</li>
+        <li>Detecta recodificaciones de la misma foto</li>
+        <li>Misma fecha + mismas dims = probable duplicado</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+<!-- Slide 4: Pantalla inicial -->
+<div class="slide" id="s4">
+  <h2>Paso 1: Seleccionar carpeta</h2>
+  <div class="screenshot-container">
+    <img src="imagenes/01_pantalla_inicial.png" alt="Pantalla inicial">
+    <div class="screenshot-caption">Ventana principal - Haz clic en "Escanear carpeta"</div>
+  </div>
+</div>
+
+<!-- Slide 5: Resultados -->
+<div class="slide" id="s5">
+  <h2>Paso 2: Revision de grupos</h2>
+  <div class="screenshot-container">
+    <img src="imagenes/02_grupos_detectados.png" alt="Grupos detectados">
+    <div class="screenshot-caption">Grupos de duplicados detectados - Vista lado a lado</div>
+  </div>
+</div>
+
+<!-- Slide 6: Vista previa -->
+<div class="slide" id="s6">
+  <h2>Paso 3: Verificar contenido</h2>
+  <div class="screenshot-container">
+    <img src="imagenes/03_vista_previa.png" alt="Vista previa">
+    <div class="screenshot-caption">Click en miniatura para ver imagen completa</div>
+  </div>
+</div>
+
+<!-- Slide 7: Borrado -->
+<div class="slide" id="s7">
+  <h2>Paso 4: Borrar duplicados</h2>
+  <div class="screenshot-container">
+    <img src="imagenes/04_seleccion_borrado.png" alt="Seleccion y borrado">
+    <div class="screenshot-caption">Selecciona las imagenes a eliminar y elige el metodo</div>
+  </div>
+</div>
+
+<!-- Slide 8: Metodos de borrado -->
+<div class="slide" id="s8">
+  <h2>Metodos de eliminacion</h2>
+  <div class="feature-grid">
+    <div class="feature-card">
+      <h4 style="color: #3fb950;">Conservar la mejor</h4>
+      <p>Selecciona automaticamente todas menos la de mayor resolucion.</p>
+    </div>
+    <div class="feature-card">
+      <h4 style="color: #e3b341;">Enviar a papelera</h4>
+      <p>Las imagenes van a la papelera de reciclaje. Puedes recuperarlas.</p>
+    </div>
+    <div class="feature-card">
+      <h4 style="color: #f85149;">Borrado permanente</h4>
+      <p>Elimina los archivos sin posibilidad de recuperacion.</p>
+    </div>
+    <div class="feature-card">
+      <h4 style="color: #58a6ff;">Auto-seleccion</h4>
+      <p>"Conservar la mejor" marca para borrar todas menos la mas grande.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Slide 9: Tipos de deteccion -->
+<div class="slide" id="s9">
+  <h2>Niveles de confianza</h2>
+  <p style="margin-bottom: 30px;">
+    Cada grupo tiene una etiqueta de confianza para ayudarte a decidir.
+  </p>
+  <ul style="max-width: 700px;">
+    <li>
+      <span class="badge badge-exact">Exacto</span>
+      Imagenes con el mismo hash SHA-256. Son copias identicas byte a byte.
+      Puedes borrar cualquiera con seguridad.
+    </li>
+    <li>
+      <span class="badge badge-probable">Probable</span>
+      Mismos metadatos (fecha, camara, dimensiones) pero diferente hash.
+      Probablemente la misma foto recodificada. Revisa antes de borrar.
+    </li>
+  </ul>
+</div>
+
+<!-- Slide 10: Stack tecnico -->
+<div class="slide" id="s10">
+  <h2>Stack tecnico</h2>
+  <div class="feature-grid" style="max-width: 900px;">
+    <div class="feature-card">
+      <h4>Backend Rust</h4>
+      <p>Escaneo con walkdir, hash SHA-256, extraccion EXIF con kamadak-exif, miniaturas con image crate.</p>
+    </div>
+    <div class="feature-card">
+      <h4>Frontend React</h4>
+      <p>Interfaz con TypeScript, vista lateral, modal de preview, seleccion interactiva.</p>
+    </div>
+    <div class="feature-card">
+      <h4>Tauri v2</h4>
+      <p>App de escritorio multiplataforma. Compila en Linux, Windows y macOS.</p>
+    </div>
+    <div class="feature-card">
+      <h4>Union-Find</h4>
+      <p>Algoritmo que fusiona grupos por hash y metadatos en una sola pasada.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Slide 11: Multiplataforma -->
+<div class="slide" id="s11">
+  <h2>Multiplataforma</h2>
+  <p style="margin-bottom: 30px;">
+    Un solo codigo fuente, tres plataformas.
+  </p>
+  <div class="feature-grid" style="max-width: 800px;">
+    <div class="feature-card">
+      <h4>Linux</h4>
+      <p>Paquete .deb y AppImage. Funciona en Ubuntu, Mint, Debian, Fedora.</p>
+    </div>
+    <div class="feature-card">
+      <h4>Windows</h4>
+      <p>Instalador .exe (NSIS) o .msi. Requiere WebView2 Runtime.</p>
+    </div>
+    <div class="feature-card">
+      <h4>macOS</h4>
+      <p>App .app y dmg. Nativo para Intel y Apple Silicon.</p>
+    </div>
+    <div class="feature-card">
+      <h4>Mismo codigo</h4>
+      <p>Solo cambian las dependencias del sistema. El logica es 100% compartida.</p>
+    </div>
+  </div>
+</div>
+
+<!-- Slide 12: Comandos -->
+<div class="slide" id="s12">
+  <h2>Como ejecutar</h2>
+  <div style="text-align: left; max-width: 600px;">
+    <div style="background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin: 16px 0;">
+      <div style="color: #8b949e; font-size: 13px; margin-bottom: 8px;"># Instalar dependencias</div>
+      <code style="color: #79c0ff;">npm install</code>
+    </div>
+    <div style="background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin: 16px 0;">
+      <div style="color: #8b949e; font-size: 13px; margin-bottom: 8px;"># Modo desarrollo</div>
+      <code style="color: #79c0ff;">npm run tauri dev</code>
+    </div>
+    <div style="background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin: 16px 0;">
+      <div style="color: #8b949e; font-size: 13px; margin-bottom: 8px;"># Generar instalador</div>
+      <code style="color: #79c0ff;">npx tauri build</code>
+    </div>
+    <div style="background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 20px; margin: 16px 0;">
+      <div style="color: #8b949e; font-size: 13px; margin-bottom: 8px;"># Tests del algoritmo</div>
+      <code style="color: #79c0ff;">cd src-tauri && cargo test</code>
+    </div>
+  </div>
+</div>
+
+<!-- Slide 13: Cierre -->
+<div class="slide" id="s13">
+  <div class="slide-title">Imagen Duplicada</div>
+  <div class="slide-subtitle">Encuentra y elimina tus fotos duplicadas</div>
+  <p style="margin-top: 20px; color: #8b949e;">
+    Hash + Metadatos + Union-Find = Deteccion precisa
+  </p>
+  <div style="margin-top: 40px;">
+    <span class="badge badge-exact">Seguro</span>
+    <span class="badge badge-probable">Inteligente</span>
+    <span class="badge badge-safe">Multiplataforma</span>
+  </div>
+</div>
+
+<div class="nav-hint">
+  <span id="slideCounter">1 / 13</span> &mdash; Click o Flechas para navegar
+</div>
+
+<script>
+  const slides = document.querySelectorAll('.slide');
+  let current = 0;
+
+  function showSlide(n) {
+    slides[current].classList.remove('active');
+    current = (n + slides.length) % slides.length;
+    slides[current].classList.add('active');
+    document.getElementById('slideCounter').textContent = `${current + 1} / ${slides.length}`;
+    document.getElementById('progressBar').style.width = `${((current + 1) / slides.length) * 100}%`;
+  }
+
+  document.addEventListener('click', (e) => {
+    if (e.clientX > window.innerWidth / 2) showSlide(current + 1);
+    else showSlide(current - 1);
+  });
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'ArrowRight' || e.key === ' ') { e.preventDefault(); showSlide(current + 1); }
+    if (e.key === 'ArrowLeft') { e.preventDefault(); showSlide(current - 1); }
+  });
+
+  // Auto-advance every 8 seconds for video mode
+  let autoPlay = false;
+  let autoTimer;
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'p') {
+      autoPlay = !autoPlay;
+      if (autoPlay) {
+        autoTimer = setInterval(() => showSlide(current + 1), 8000);
+        document.querySelector('.nav-hint').textContent = 'AUTO-PLAY ACTIVADO (p para pausar)';
+      } else {
+        clearInterval(autoTimer);
+        document.querySelector('.nav-hint').innerHTML = '<span id="slideCounter">' + (current+1) + ' / ' + slides.length + '</span> &mdash; Click o Flechas para navegar';
+      }
+    }
+  });
+
+  // Init
+  showSlide(0);
+</script>
+</body>
+</html>
