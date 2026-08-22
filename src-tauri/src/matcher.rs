@@ -1,7 +1,21 @@
 use crate::{DupGroup, ImageInfo};
 use std::collections::{HashMap, HashSet};
 
-pub fn group(images: Vec<ImageInfo>) -> Vec<DupGroup> {
+pub struct GroupOptions {
+    pub dhash_umbral: u32,
+    pub buscar_similares: bool,
+}
+
+impl Default for GroupOptions {
+    fn default() -> Self {
+        Self {
+            dhash_umbral: crate::hasher::DHASH_THRESHOLD,
+            buscar_similares: false,
+        }
+    }
+}
+
+pub fn group(images: Vec<ImageInfo>, opts: GroupOptions) -> Vec<DupGroup> {
     let n = images.len();
     let mut parent: Vec<usize> = (0..n).collect();
 
@@ -40,7 +54,7 @@ pub fn group(images: Vec<ImageInfo>) -> Vec<DupGroup> {
         }
     }
     for (_, idxs) in by_sig {
-        if idxs.len() < 2 {
+        if idxs.len() < 2 || opts.buscar_similares {
             continue;
         }
         for a in 0..idxs.len() {
@@ -48,6 +62,21 @@ pub fn group(images: Vec<ImageInfo>) -> Vec<DupGroup> {
                 let (ia, ib) = (&images[idxs[a]], &images[idxs[b]]);
                 if crate::hasher::visualmente_similares(ia.dhash, ib.dhash) {
                     union(&mut parent, idxs[a], idxs[b]);
+                }
+            }
+        }
+    }
+
+    if opts.buscar_similares {
+        let con_hash: Vec<usize> = (0..n).filter(|&i| images[i].dhash.is_some()).collect();
+        for a in 0..con_hash.len() {
+            let ha = images[con_hash[a]].dhash;
+            for b in (a + 1)..con_hash.len() {
+                let hb = images[con_hash[b]].dhash;
+                if let (Some(ha), Some(hb)) = (ha, hb) {
+                    if crate::hasher::hamming_distance(ha, hb) <= opts.dhash_umbral {
+                        union(&mut parent, con_hash[a], con_hash[b]);
+                    }
                 }
             }
         }
@@ -146,7 +175,7 @@ mod tests {
             img("b/foto-copia.png", "hash1", Some("2020-01-01 10:00:00"), 800, 600),
             img("c/unic.png", "hash2", Some("2021-05-05 09:00:00"), 400, 300),
         ];
-        let groups = group(imgs);
+        let groups = group(imgs, GroupOptions::default());
         assert_eq!(groups.len(), 1);
         assert_eq!(groups[0].confidence, "exacto");
         assert_eq!(groups[0].images.len(), 2);
@@ -160,7 +189,7 @@ mod tests {
             img_dhash("c/otro.jpg", "hashC", Some("2022-03-03 12:00:00"), 1024, 768, 0xFF00FF00FF00FF02),
             img_dhash("d/distinto.jpg", "hashD", Some("2022-03-03 12:00:00"), 1024, 768, 0x00FF00FF00FF00FF),
         ];
-        let groups = group(imgs);
+        let groups = group(imgs, GroupOptions::default());
         assert_eq!(groups.len(), 1);
         assert_eq!(groups[0].confidence, "probable");
         assert_eq!(groups[0].images.len(), 3);
@@ -173,7 +202,7 @@ mod tests {
             img_dhash("b/r2.jpg", "hashB", Some("2022-03-03 12:00:00"), 4000, 3000, 0x0000000000000000),
             img_dhash("c/r3.jpg", "hashC", Some("2022-03-03 12:00:00"), 4000, 3000, 0xAAAAAAAAAAAAAAAA),
         ];
-        let groups = group(imgs);
+        let groups = group(imgs, GroupOptions::default());
         assert_eq!(groups.len(), 0);
     }
 
@@ -190,7 +219,7 @@ mod tests {
                 0x123456789ABCDEF6,
             ),
         ];
-        let groups = group(imgs);
+        let groups = group(imgs, GroupOptions::default());
         assert_eq!(groups.len(), 1);
         assert_eq!(groups[0].confidence, "probable");
     }
@@ -201,7 +230,7 @@ mod tests {
             img("a/1.jpg", "hashA", Some("2022-03-03 12:00:00"), 100, 100),
             img("b/2.jpg", "hashB", Some("2022-03-03 12:00:00"), 100, 100),
         ];
-        let groups = group(imgs);
+        let groups = group(imgs, GroupOptions::default());
         assert_eq!(groups.len(), 0);
     }
 
@@ -212,7 +241,7 @@ mod tests {
             img_dhash("b/copia.png", "hash1", Some("2020-01-01 10:00:00"), 800, 600, 0xFF00FF00FF00FF00),
             img_dhash("c/recodificado.png", "hash2", Some("2020-01-01 10:00:00"), 800, 600, 0xFF00FF00FF00FF03),
         ];
-        let groups = group(imgs);
+        let groups = group(imgs, GroupOptions::default());
         assert_eq!(groups.len(), 1);
         assert_eq!(groups[0].confidence, "exacto");
         assert_eq!(groups[0].images.len(), 3);
@@ -224,7 +253,7 @@ mod tests {
             img("a/1.jpg", "hashA", None, 100, 100),
             img("b/2.jpg", "hashB", None, 100, 100),
         ];
-        let groups = group(imgs);
+        let groups = group(imgs, GroupOptions::default());
         assert_eq!(groups.len(), 0);
     }
 
@@ -234,7 +263,46 @@ mod tests {
             img("a/small.png", "hash1", Some("2020-01-01 10:00:00"), 200, 100),
             img("b/big.png", "hash1", Some("2020-01-01 10:00:00"), 2000, 1000),
         ];
-        let groups = group(imgs);
+        let groups = group(imgs, GroupOptions::default());
         assert_eq!(groups[0].images[0].path, "b/big.png");
+    }
+
+    #[test]
+    fn content_mode_groups_similar_without_metadata() {
+        let mut a = img_dhash("a/foto.png", "hashA", None, 800, 600, 0x123456789ABCDEF0);
+        a.camera = None;
+        let mut b = img_dhash("b/redimensionada.png", "hashB", None, 400, 300, 0x123456789ABCDEF2);
+        b.camera = None;
+        let groups = group(
+            vec![a, b],
+            GroupOptions {
+                dhash_umbral: 8,
+                buscar_similares: true,
+            },
+        );
+        assert_eq!(groups.len(), 1);
+        assert_eq!(groups[0].confidence, "probable");
+    }
+
+    #[test]
+    fn content_mode_off_does_not_group_without_metadata() {
+        let a = img_dhash("a/foto.png", "hashA", None, 800, 600, 0x123456789ABCDEF0);
+        let b = img_dhash("b/otra.png", "hashB", None, 400, 300, 0x123456789ABCDEF1);
+        let groups = group(vec![a, b], GroupOptions::default());
+        assert_eq!(groups.len(), 0);
+    }
+
+    #[test]
+    fn content_mode_respects_strict_threshold() {
+        let a = img_dhash("a/1.png", "hashA", None, 800, 600, 0xFFFFFFFFFFFFFFFF);
+        let b = img_dhash("b/2.png", "hashB", None, 400, 300, 0x00000000000000FF);
+        let groups = group(
+            vec![a, b],
+            GroupOptions {
+                dhash_umbral: 4,
+                buscar_similares: true,
+            },
+        );
+        assert_eq!(groups.len(), 0);
     }
 }

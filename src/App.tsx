@@ -55,6 +55,8 @@ export default function App() {
   const [progress, setProgress] = useState<ScanProgress | null>(null);
   const [folder, setFolder] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [buscarSimilares, setBuscarSimilares] = useState(false);
+  const [umbral, setUmbral] = useState(8);
   const [visibleGroups, setVisibleGroups] = useState(50);
   const deletedRef = useRef<Set<string>>(new Set());
 
@@ -107,7 +109,11 @@ export default function App() {
     setProgress(null);
     deletedRef.current = new Set();
     try {
-      const result = await invoke<ScanResult>("scan_folder", { dir });
+      const result = await invoke<ScanResult>("scan_folder", {
+        dir,
+        buscarSimilares,
+        umbral,
+      });
       const remaining = result.groups.filter(
         (g) =>
           g.images.length > 1 &&
@@ -160,6 +166,27 @@ export default function App() {
           </button>
         )}
         {folder && <span className="folder">{folder}</span>}
+        <label className="scan-option" title="Compara por contenido visual aunque cambien el tamaño, dimensiones o fecha (más lento)">
+          <input
+            type="checkbox"
+            checked={buscarSimilares}
+            onChange={(e) => setBuscarSimilares(e.target.checked)}
+            disabled={scanning}
+          />
+          Buscar similares
+        </label>
+        <select
+          className="scan-similitud"
+          value={umbral}
+          onChange={(e) => setUmbral(Number(e.target.value))}
+          disabled={scanning || !buscarSimilares}
+          title="Nivel de exigencia para considerar dos imágenes similares"
+        >
+          <option value={4}>Estricta</option>
+          <option value={8}>Normal</option>
+          <option value={12}>Laxa</option>
+          <option value={16}>Muy laxa</option>
+        </select>
       </header>
 
       {scanning && progress && (

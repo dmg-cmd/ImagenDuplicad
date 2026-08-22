@@ -82,8 +82,13 @@ fn emit_live_duplicate(
 pub async fn scan_folder(
     dir: String,
     app: tauri::AppHandle,
+    buscar_similares: Option<bool>,
+    umbral: Option<u32>,
 ) -> Result<ScanResult, String> {
     CANCEL_TOKEN.reset();
+
+    let buscar = buscar_similares.unwrap_or(false);
+    let umbral_dhash = umbral.unwrap_or(crate::hasher::DHASH_THRESHOLD);
 
     let paths = scanner::scan_images(&dir);
     let total = paths.len();
@@ -105,11 +110,15 @@ pub async fn scan_folder(
         }
     }
 
-    let size_candidates: Vec<Vec<usize>> = size_groups
-        .into_iter()
-        .filter(|(_, idxs)| idxs.len() > 1)
-        .map(|(_, idxs)| idxs)
-        .collect();
+    let size_candidates: Vec<Vec<usize>> = if buscar {
+        vec![(0..total).collect()]
+    } else {
+        size_groups
+            .into_iter()
+            .filter(|(_, idxs)| idxs.len() > 1)
+            .map(|(_, idxs)| idxs)
+            .collect()
+    };
 
     let size_candidate_count: usize = size_candidates.iter().map(|g| g.len()).sum();
     let size_discarded = total - size_candidate_count;
@@ -213,7 +222,11 @@ pub async fn scan_folder(
     }
 
     // ── FASE 3: Calcular hashes ───────────────────────────────
-    let hash_indices: Vec<usize> = meta_candidates.iter().flatten().copied().collect();
+    let hash_indices: Vec<usize> = if buscar {
+        meta_results.iter().map(|m| m.0).collect()
+    } else {
+        meta_candidates.iter().flatten().copied().collect()
+    };
     let hash_total = hash_indices.len();
 
     emit_progress(&app, "Calculando hashes", 0, hash_total, None);
@@ -280,7 +293,13 @@ pub async fn scan_folder(
     // ── FASE 4: Agrupar ───────────────────────────────────────
     emit_progress(&app, "Agrupando duplicados", 0, 1, None);
 
-    let groups = crate::matcher::group(images);
+    let groups = crate::matcher::group(
+        images,
+        crate::matcher::GroupOptions {
+            dhash_umbral: umbral_dhash,
+            buscar_similares: buscar,
+        },
+    );
     let skipped = skipped.into_inner();
 
     emit_progress(
