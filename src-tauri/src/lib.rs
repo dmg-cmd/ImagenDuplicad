@@ -92,6 +92,7 @@ mod desktop {
                 commands::scan_folder,
                 commands::cancel_scan,
                 commands::preview,
+                commands::image_diff,
                 commands::delete_to_trash,
                 commands::delete_permanent,
             ])

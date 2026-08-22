@@ -1,14 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { convertFileSrc, invoke } from "@tauri-apps/api/core";
 import type { ImageInfo } from "../types";
-import { convertFileSrc } from "@tauri-apps/api/core";
 import { formatBytes, dims } from "../lib/format";
 
 const MIN_ZOOM = 1;
 const MAX_ZOOM = 12;
 const ZOOM_STEP = 1.25;
 const DIFF_ZOOM = 6;
-const DIFF_THRESHOLD = 20;
-const DIFF_MAX_WIDTH = 1600;
 
 type Mode = "lado" | "cortina" | "fundido" | "diff";
 
@@ -33,66 +31,6 @@ interface Transform {
 }
 
 const IDENTITY: Transform = { zoom: 1, x: 0, y: 0 };
-
-function loadImage(src: string): Promise<HTMLImageElement> {
-  return new Promise((resolve, reject) => {
-    const img = new Image();
-    img.onload = () => resolve(img);
-    img.onerror = () => reject(new Error("no se pudo cargar la imagen"));
-    img.src = src;
-  });
-}
-
-async function computeDiff(srcA: string, srcB: string): Promise<string> {
-  const [a, b] = await Promise.all([loadImage(srcA), loadImage(srcB)]);
-  const w0 = Math.min(a.naturalWidth, b.naturalWidth);
-  const h0 = Math.min(a.naturalHeight, b.naturalHeight);
-  if (w0 === 0 || h0 === 0) throw new Error("dimensiones inválidas");
-  const cw = Math.min(DIFF_MAX_WIDTH, w0);
-  const ch = Math.max(1, Math.round((h0 * cw) / w0));
-
-  const pixelsOf = (img: HTMLImageElement): Uint8ClampedArray => {
-    const c = document.createElement("canvas");
-    c.width = cw;
-    c.height = ch;
-    const ctx = c.getContext("2d", { willReadFrequently: true })!;
-    ctx.drawImage(img, 0, 0, cw, ch);
-    return ctx.getImageData(0, 0, cw, ch).data;
-  };
-
-  const pa = pixelsOf(a);
-  const pb = pixelsOf(b);
-  const out = new ImageData(cw, ch);
-
-  for (let i = 0; i < pa.length; i += 4) {
-    const d =
-      (Math.abs(pa[i] - pb[i]) +
-        Math.abs(pa[i + 1] - pb[i + 1]) +
-        Math.abs(pa[i + 2] - pb[i + 2])) /
-      3;
-    const o = out.data;
-    if (d > DIFF_THRESHOLD) {
-      const k = Math.min(1, d / 80);
-      o[i] = 220 * k + 20;
-      o[i + 1] = 15;
-      o[i + 2] = 25;
-      o[i + 3] = 255;
-    } else {
-      const lum = 0.299 * pa[i] + 0.587 * pa[i + 1] + 0.114 * pa[i + 2];
-      const g = 40 + lum * 0.3;
-      o[i] = g;
-      o[i + 1] = g;
-      o[i + 2] = g;
-      o[i + 3] = 255;
-    }
-  }
-
-  const oc = document.createElement("canvas");
-  oc.width = cw;
-  oc.height = ch;
-  oc.getContext("2d")!.putImageData(out, 0, 0);
-  return oc.toDataURL("image/png");
-}
 
 export function CompareViewer({ images, initialLeft, initialRight, onClose }: Props) {
   const [leftIdx, setLeftIdx] = useState(initialLeft);
@@ -221,14 +159,15 @@ export function CompareViewer({ images, initialLeft, initialRight, onClose }: Pr
     let alive = true;
     setDiffUrl(null);
     setDiffError(null);
-    computeDiff(srcOf(left), srcOf(right))
-      .then((url) => alive && setDiffUrl(url))
+    invoke<string>("image_diff", { pathA: left.path, pathB: right.path })
+      .then((p) => {
+        if (alive) setDiffUrl(p ? convertFileSrc(p) : "");
+      })
       .catch(() => alive && setDiffError("No se pudo calcular la diferencia entre estas imágenes"));
     return () => {
       alive = false;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, leftIdx, rightIdx]);
+  }, [mode, leftIdx, rightIdx, left.path, right.path]);
 
   useEffect(() => {
     const handlers = canvasRefs.current.map((canvas) => {
@@ -443,7 +382,13 @@ export function CompareViewer({ images, initialLeft, initialRight, onClose }: Pr
                 onPointerLeave={endDrag}
                 onDoubleClick={(e) => zoomToPoint(e.currentTarget, e.clientX, e.clientY)}
               >
-                {diffUrl ? (
+                {diffUrl === null && !diffError && (
+                  <div className="no-thumb">Calculando diferencias...</div>
+                )}
+                {diffUrl === "" && (
+                  <div className="no-thumb">Sin diferencias: las imágenes son idénticas píxel a píxel</div>
+                )}
+                {diffUrl !== null && diffUrl !== "" && (
                   <img
                     className="diff-img"
                     src={diffUrl}
@@ -453,11 +398,8 @@ export function CompareViewer({ images, initialLeft, initialRight, onClose }: Pr
                       transform: `translate(${transform.x}px, ${transform.y}px) scale(${transform.zoom})`,
                     }}
                   />
-                ) : diffError ? (
-                  <div className="no-thumb">{diffError}</div>
-                ) : (
-                  <div className="no-thumb">Calculando diferencias...</div>
                 )}
+                {diffError && <div className="no-thumb">{diffError}</div>}
               </div>
               <div className="compare-pane-meta">
                 <span className="diff-legend">🔴 Zonas distintas · ⬛ Zonas iguales (atenuadas)</span>

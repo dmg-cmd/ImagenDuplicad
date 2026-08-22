@@ -3,6 +3,7 @@ use crate::reader;
 use crate::scanner;
 use crate::thumbnails;
 use crate::{DeleteRequest, DupGroup, ImageInfo, ScanProgress, ScanResult, CANCEL_TOKEN};
+use image::imageops::FilterType;
 use rayon::prelude::*;
 use std::collections::HashMap;
 use std::fs;
@@ -342,6 +343,69 @@ pub fn preview(path: String) -> Result<String, String> {
         .map(|p| p.to_string_lossy().to_string())
         .ok_or_else(|| format!("No se pudo generar la vista previa: {path}"))?;
     Ok(thumb)
+}
+
+const DIFF_THRESHOLD: i32 = 20;
+const DIFF_MAX_WIDTH: u32 = 1600;
+
+#[tauri::command]
+pub fn image_diff(path_a: String, path_b: String) -> Result<String, String> {
+    let decode =
+        |p: &str| -> Result<image::DynamicImage, String> {
+            image::ImageReader::open(p)
+                .map_err(|e| format!("No se pudo abrir {p}: {e}"))?
+                .decode()
+                .map_err(|e| format!("No se pudo decodificar {p}: {e}"))
+        };
+
+    let a = decode(&path_a)?;
+    let b = decode(&path_b)?;
+
+    if a.width() != b.width() || a.height() != b.height() {
+        return Err(format!(
+            "Las imágenes tienen dimensiones distintas ({}x{} vs {}x{}); la comparación de diferencias requiere el mismo tamaño",
+            a.width(),
+            a.height(),
+            b.width(),
+            b.height()
+        ));
+    }
+
+    let cw = a.width().min(DIFF_MAX_WIDTH);
+    let ch = ((a.height() as u64 * cw as u64) / a.width().max(1) as u64).max(1) as u32;
+
+    let ra = a.resize_exact(cw, ch, FilterType::Triangle).into_rgb8();
+    let rb = b.resize_exact(cw, ch, FilterType::Triangle).into_rgb8();
+
+    let mut out = image::RgbImage::new(cw, ch);
+    let mut hay_diferencias = false;
+    for (x, y, pa) in ra.enumerate_pixels() {
+        let pb = rb.get_pixel(x, y);
+        let d = (pa[0].abs_diff(pb[0]) as i32
+            + pa[1].abs_diff(pb[1]) as i32
+            + pa[2].abs_diff(pb[2]) as i32)
+            / 3;
+        let p = out.get_pixel_mut(x, y);
+        if d > DIFF_THRESHOLD {
+            hay_diferencias = true;
+            let k = (d as f32 / 80.0).min(1.0);
+            *p = image::Rgb([(220.0 * k + 20.0) as u8, 15, 25]);
+        } else {
+            let lum = (0.299 * pa[0] as f32 + 0.587 * pa[1] as f32 + 0.114 * pa[2] as f32) as u8;
+            let g = 40 + (lum as u16 * 3 / 10) as u8;
+            *p = image::Rgb([g, g, g]);
+        }
+    }
+
+    if !hay_diferencias {
+        return Ok(String::new());
+    }
+
+    let key = crate::hasher::sha256_bytes(format!("{path_a}|{path_b}|v2").as_bytes());
+    let out_path = thumbnails::cache_dir().join(format!("diff-{key}.png"));
+    out.save(&out_path)
+        .map_err(|e| format!("No se pudo guardar el mapa de diferencias: {e}"))?;
+    Ok(out_path.to_string_lossy().to_string())
 }
 
 fn delete(paths: &[String], to_trash: bool) -> Result<(), String> {
