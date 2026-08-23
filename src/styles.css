@@ -160,6 +160,56 @@ body {
   color: var(--muted);
 }
 
+.carpetas-vacio {
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.carpetas-total {
+  margin-bottom: 12px;
+}
+
+.carpetas-tabla {
+  width: 100%;
+  border-collapse: collapse;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow: hidden;
+  font-size: 13px;
+}
+
+.carpetas-tabla th,
+.carpetas-tabla td {
+  text-align: left;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.carpetas-tabla th {
+  background: rgba(0, 0, 0, 0.04);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+  color: var(--muted);
+}
+
+.carpetas-tabla tr:last-child td {
+  border-bottom: none;
+}
+
+.carpetas-dir {
+  max-width: 420px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.carpetas-espacio {
+  font-weight: 700;
+  white-space: nowrap;
+}
+
 .btn {
   border: 1px solid var(--border);
   background: var(--panel);

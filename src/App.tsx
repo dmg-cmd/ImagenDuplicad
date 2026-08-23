@@ -1,9 +1,10 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type { DupGroup, ImageInfo, ScanProgress, ScanResult } from "./types";
 import { GroupCard } from "./components/GroupCard";
+import { formatBytes } from "./lib/format";
 
 type UIGroup = DupGroup & { id: string };
 
@@ -67,6 +68,7 @@ export default function App() {
   });
   const [panelExcluidas, setPanelExcluidas] = useState(false);
   const [nuevaExcluida, setNuevaExcluida] = useState("");
+  const [vista, setVista] = useState<"grupos" | "carpetas">("grupos");
   const [visibleGroups, setVisibleGroups] = useState(50);
   const deletedRef = useRef<Set<string>>(new Set());
 
@@ -181,6 +183,22 @@ export default function App() {
   const filtrados =
     filtro === "todos" ? groups : groups.filter((g) => g.confidence === filtro);
   const totalFiltrado = filtrados.reduce((acc, g) => acc + g.images.length, 0);
+
+  const porCarpeta = useMemo(() => {
+    const m = new Map<string, { recuperable: number; imagenes: number; grupos: Set<string> }>();
+    for (const g of filtrados) {
+      for (const img of g.images.slice(1)) {
+        const e = m.get(img.dir) ?? { recuperable: 0, imagenes: 0, grupos: new Set() };
+        e.recuperable += img.size_bytes;
+        e.imagenes += 1;
+        e.grupos.add(g.id);
+        m.set(img.dir, e);
+      }
+    }
+    return [...m.entries()]
+      .map(([dir, v]) => ({ dir, ...v, grupos: v.grupos.size }))
+      .sort((a, b) => b.recuperable - a.recuperable);
+  }, [filtrados]);
 
   return (
     <div className="app">
@@ -335,6 +353,24 @@ export default function App() {
               Probables ({groups.filter((g) => g.confidence === "probable").length})
             </button>
           </span>
+          {filtrados.length > 0 && (
+            <span className="filtro-grupos">
+              <button
+                className={`tab ${vista === "grupos" ? "active" : ""}`}
+                onClick={() => setVista("grupos")}
+                title="Lista de grupos de duplicados"
+              >
+                Por grupos
+              </button>
+              <button
+                className={`tab ${vista === "carpetas" ? "active" : ""}`}
+                onClick={() => setVista("carpetas")}
+                title="Espacio recuperable resumido por carpeta"
+              >
+                Por carpetas
+              </button>
+            </span>
+          )}
           {filtrados.length !== groups.length && (
             <span className="skipped-note">
               · mostrando {filtrados.length} grupo(s), {totalFiltrado} imágenes
@@ -351,12 +387,53 @@ export default function App() {
       )}
 
       <main className="groups">
-        {filtrados.slice(0, visibleGroups).map((g) => (
-          <GroupCard key={g.id} group={g} onDeleted={removeDeleted} />
-        ))}
+        {vista === "grupos" ? (
+          filtrados.slice(0, visibleGroups).map((g) => (
+            <GroupCard key={g.id} group={g} onDeleted={removeDeleted} />
+          ))
+        ) : porCarpeta.length === 0 ? (
+          <p className="carpetas-vacio">
+            No hay espacio recuperable que mostrar con los filtros actuales.
+          </p>
+        ) : (
+          <>
+            <div className="summary carpetas-total">
+              Si en cada grupo conservas solo la mejor imagen, liberarías{" "}
+              <strong>
+                {formatBytes(
+                  porCarpeta.reduce((acc, c) => acc + c.recuperable, 0)
+                )}
+              </strong>{" "}
+              repartidos en {porCarpeta.length} carpeta(s). Ve al modo{" "}
+              <strong>Por grupos</strong> para revisar y borrar.
+            </div>
+            <table className="carpetas-tabla">
+              <thead>
+                <tr>
+                  <th>Carpeta</th>
+                  <th>Duplicados borrables</th>
+                  <th>Espacio recuperable</th>
+                  <th>Grupos</th>
+                </tr>
+              </thead>
+              <tbody>
+                {porCarpeta.map((c) => (
+                  <tr key={c.dir}>
+                    <td className="carpetas-dir" title={c.dir}>
+                      📁 {c.dir}
+                    </td>
+                    <td>{c.imagenes}</td>
+                    <td className="carpetas-espacio">{formatBytes(c.recuperable)}</td>
+                    <td>{c.grupos}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </>
+        )}
       </main>
 
-      {filtrados.length > visibleGroups && (
+      {vista === "grupos" && filtrados.length > visibleGroups && (
         <div className="load-more">
           <button className="btn primary" onClick={() => setVisibleGroups((v) => v + 100)}>
             Mostrar más grupos ({filtrados.length - visibleGroups} restantes)
