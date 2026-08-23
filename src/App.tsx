@@ -69,6 +69,16 @@ export default function App() {
   const [panelExcluidas, setPanelExcluidas] = useState(false);
   const [nuevaExcluida, setNuevaExcluida] = useState("");
   const [vista, setVista] = useState<"grupos" | "carpetas">("grupos");
+  const [tema, setTema] = useState<"claro" | "oscuro">(() => {
+    const guardado = localStorage.getItem("tema");
+    if (guardado === "oscuro" || guardado === "claro") return guardado;
+    return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "oscuro" : "claro";
+  });
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = tema === "oscuro" ? "dark" : "";
+    localStorage.setItem("tema", tema);
+  }, [tema]);
   const [visibleGroups, setVisibleGroups] = useState(50);
   const deletedRef = useRef<Set<string>>(new Set());
 
@@ -218,6 +228,13 @@ export default function App() {
           </button>
         )}
         {folder && <span className="folder">{folder}</span>}
+        <button
+          className="btn"
+          onClick={() => setTema((t) => (t === "oscuro" ? "claro" : "oscuro"))}
+          title={tema === "oscuro" ? "Cambiar a tema claro" : "Cambiar a tema oscuro"}
+        >
+          {tema === "oscuro" ? "☀️ Claro" : "🌙 Oscuro"}
+        </button>
         <button
           className={`btn ${panelExcluidas ? "primary" : ""}`}
           onClick={() => setPanelExcluidas((v) => !v)}
