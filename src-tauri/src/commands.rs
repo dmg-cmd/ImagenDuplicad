@@ -540,6 +540,65 @@ pub fn image_diff(path_a: String, path_b: String) -> Result<String, String> {
     Ok(out_path.to_string_lossy().to_string())
 }
 
+#[cfg(target_os = "android")]
+fn eliminar_archivo(
+    path: &Path,
+    to_trash: bool,
+    app: &tauri::AppHandle,
+) -> Result<(), String> {
+    if !to_trash {
+        return fs::remove_file(path).map_err(|e| format!("No se pudo borrar {}: {e}", path.display()));
+    }
+    let papelera = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| e.to_string())?
+        .join("papelera");
+    fs::create_dir_all(&papelera).map_err(|e| e.to_string())?;
+    let nombre = path
+        .file_name()
+        .map(|n| n.to_string_lossy().to_string())
+        .unwrap_or_else(|| "imagen".to_string());
+    let mut destino = papelera.join(&nombre);
+    let stem = path
+        .file_stem()
+        .map(|s| s.to_string_lossy().to_string())
+        .unwrap_or_else(|| "imagen".to_string());
+    let ext = path
+        .extension()
+        .map(|e| e.to_string_lossy().to_string())
+        .unwrap_or_default();
+    let mut i = 2;
+    while destino.exists() {
+        destino = if ext.is_empty() {
+            papelera.join(format!("{stem} ({i})"))
+        } else {
+            papelera.join(format!("{stem} ({i}).{ext}"))
+        };
+        i += 1;
+    }
+    if fs::rename(path, &destino).is_err() {
+        fs::copy(path, &destino)
+            .map_err(|e| format!("No se pudo copiar a la papelera interna: {e}"))?;
+        fs::remove_file(path).map_err(|e| e.to_string())?;
+    }
+    Ok(())
+}
+
+#[cfg(not(target_os = "android"))]
+fn eliminar_archivo(
+    path: &Path,
+    to_trash: bool,
+    _app: &tauri::AppHandle,
+) -> Result<(), String> {
+    if to_trash {
+        trash::delete(path)
+            .map_err(|e| format!("No se pudo enviar a la papelera {}: {e}", path.display()))
+    } else {
+        fs::remove_file(path).map_err(|e| format!("No se pudo borrar {}: {e}", path.display()))
+    }
+}
+
 fn delete(paths: &[String], to_trash: bool, app: &tauri::AppHandle) -> Result<(), String> {
     let mut eliminados: Vec<String> = Vec::new();
     for p in paths {
@@ -547,13 +606,7 @@ fn delete(paths: &[String], to_trash: bool, app: &tauri::AppHandle) -> Result<()
         if !path.exists() {
             continue;
         }
-        if to_trash {
-            trash::delete(path)
-                .map_err(|e| format!("No se pudo enviar a la papelera {p}: {e}"))?;
-        } else {
-            fs::remove_file(path)
-                .map_err(|e| format!("No se pudo borrar {p}: {e}"))?;
-        }
+        eliminar_archivo(path, to_trash, app)?;
         eliminados.push(p.clone());
     }
     registrar_historial(

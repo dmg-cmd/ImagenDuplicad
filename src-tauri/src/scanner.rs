@@ -1,4 +1,4 @@
-use std::path::{Path, PathBuf};
+use std::path::PathBuf;
 
 const EXTS: &[&str] = &["jpg", "jpeg", "png", "webp", "gif", "tiff", "tif", "bmp"];
 

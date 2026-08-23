@@ -20,11 +20,13 @@ walkdir = "2"
 sha2 = "0.10"
 kamadak-exif = "0.5"
 image = { version = "0.25", default-features = false, features = ["jpeg", "png", "webp", "gif", "tiff", "bmp"] }
-trash = "5"
 chrono = { version = "0.4", features = ["serde"] }
 once_cell = "1"
 rayon = "1.10"
 memmap2 = "0.9"
+
+[target.'cfg(not(target_os = "android"))'.dependencies]
+trash = "5"
 
 [profile.release]
 strip = true
