@@ -350,7 +350,10 @@ fn csv_escape(s: &str) -> String {
     format!("\"{}\"", s.replace('"', "\"\""))
 }
 
-fn registrar_historial(paths: &[&Path], permanent: bool, app: &tauri::AppHandle) {
+fn registrar_historial(modo: &str, entradas: &[String], app: &tauri::AppHandle) {
+    if entradas.is_empty() {
+        return;
+    }
     let Ok(file) = history_file(app) else {
         return;
     };
@@ -367,17 +370,76 @@ fn registrar_historial(paths: &[&Path], permanent: bool, app: &tauri::AppHandle)
     if nueva {
         let _ = writeln!(w, "fecha,modo,ruta");
     }
-    let modo = if permanent { "permanente" } else { "papelera" };
     let fecha = chrono::Local::now().format("%Y-%m-%d %H:%M:%S");
-    for p in paths {
-        let ruta = p.to_string_lossy();
-        let _ = writeln!(w, "{},{},{}", fecha, modo, csv_escape(&ruta));
+    for ruta in entradas {
+        let _ = writeln!(w, "{},{},{}", fecha, modo, csv_escape(ruta));
     }
 }
 
 #[tauri::command]
-pub fn abrir_historial(app: tauri::AppHandle) -> Result<(), String> {
-    let file = history_file(&app)?;
+pub fn mover_imagen(
+    origen: String,
+    dir_destino: String,
+    app: tauri::AppHandle,
+) -> Result<String, String> {
+    let src = Path::new(&origen);
+    if !src.is_file() {
+        return Err(format!("El archivo no existe: {origen}"));
+    }
+    let dst_dir = Path::new(&dir_destino);
+    if !dst_dir.is_dir() {
+        return Err(format!("La carpeta destino no existe: {dir_destino}"));
+    }
+
+    let nombre = src
+        .file_name()
+        .ok_or_else(|| format!("Ruta inválida: {origen}"))?;
+    let mut destino = dst_dir.join(nombre);
+
+    if destino.exists() {
+        let stem = src
+            .file_stem()
+            .map(|s| s.to_string_lossy().to_string())
+            .unwrap_or_else(|| "imagen".to_string());
+        let ext = src
+            .extension()
+            .map(|e| e.to_string_lossy().to_string())
+            .unwrap_or_default();
+        let mut i = 2;
+        loop {
+            destino = if ext.is_empty() {
+                dst_dir.join(format!("{stem} ({i})"))
+            } else {
+                dst_dir.join(format!("{stem} ({i}).{ext}"))
+            };
+            if !destino.exists() {
+                break;
+            }
+            i += 1;
+        }
+    }
+
+    if fs::rename(src, &destino).is_err() {
+        fs::copy(src, &destino)
+            .map_err(|e| format!("No se pudo copiar a {}: {e}", destino.display()))?;
+        fs::remove_file(src).map_err(|e| format!("No se pudo quitar el original: {e}"))?;
+    }
+
+    registrar_historial(
+        "movida",
+        &[format!(
+            "{} -> {}",
+            origen,
+            destino.to_string_lossy()
+        )],
+        &app,
+    );
+
+    Ok(destino.to_string_lossy().to_string())
+}
+
+#[tauri::command]
+pub fn abrir_historial(app: tauri::AppHandle) -> Result<(), String> {    let file = history_file(&app)?;
     if !file.exists() {
         std::fs::write(&file, "fecha,modo,ruta\n")
             .map_err(|e| format!("No se pudo crear el historial: {e}"))?;
@@ -479,7 +541,7 @@ pub fn image_diff(path_a: String, path_b: String) -> Result<String, String> {
 }
 
 fn delete(paths: &[String], to_trash: bool, app: &tauri::AppHandle) -> Result<(), String> {
-    let mut eliminados: Vec<&Path> = Vec::new();
+    let mut eliminados: Vec<String> = Vec::new();
     for p in paths {
         let path = Path::new(p);
         if !path.exists() {
@@ -492,11 +554,13 @@ fn delete(paths: &[String], to_trash: bool, app: &tauri::AppHandle) -> Result<()
             fs::remove_file(path)
                 .map_err(|e| format!("No se pudo borrar {p}: {e}"))?;
         }
-        eliminados.push(path);
+        eliminados.push(p.clone());
     }
-    if !eliminados.is_empty() {
-        registrar_historial(&eliminados, !to_trash, app);
-    }
+    registrar_historial(
+        if to_trash { "papelera" } else { "permanente" },
+        &eliminados,
+        app,
+    );
     Ok(())
 }
 

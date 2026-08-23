@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { invoke, convertFileSrc } from "@tauri-apps/api/core";
+import { open } from "@tauri-apps/plugin-dialog";
 import type { DupGroup, ImageInfo } from "../types";
 import { formatBytes, dims } from "../lib/format";
 import { enqueue, useInView } from "../lib/thumbQueue";
@@ -59,6 +60,21 @@ export function GroupCard({ group, onDeleted }: Props) {
   const [confirming, setConfirming] = useState<boolean | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
+  const [moverConservadas, setMoverConservadas] = useState(false);
+  const [carpetaDestino, setCarpetaDestino] = useState<string | null>(() =>
+    localStorage.getItem("carpeta-mover-conservadas")
+  );
+
+  useEffect(() => {
+    if (carpetaDestino) {
+      localStorage.setItem("carpeta-mover-conservadas", carpetaDestino);
+    }
+  }, [carpetaDestino]);
+
+  const elegirDestino = async () => {
+    const d = await open({ directory: true, multiple: false });
+    if (typeof d === "string") setCarpetaDestino(d);
+  };
 
   const toggle = (path: string) => {
     setSelected((prev) => {
@@ -94,6 +110,27 @@ export function GroupCard({ group, onDeleted }: Props) {
       onDeleted(new Set(paths));
       setSelected(new Set());
       setConfirming(null);
+
+      const conservadas = group.images.filter((i) => !selected.has(i.path));
+      if (moverConservadas && carpetaDestino && conservadas.length > 0) {
+        const resultados = await Promise.allSettled(
+          conservadas.map((i) =>
+            invoke<string>("mover_imagen", { origen: i.path, dirDestino: carpetaDestino })
+          )
+        );
+        const ok = resultados.filter((r) => r.status === "fulfilled").length;
+        const fallos = resultados.length - ok;
+        if (ok > 0) {
+          onDeleted(new Set(conservadas.map((c) => c.path)));
+        }
+        setInfo(
+          `${paths.length} borrada(s)` +
+            (ok > 0 ? ` · ${ok} conservada(s) movida(s) a ${carpetaDestino}` : "") +
+            (fallos > 0 ? ` · ⚠ ${fallos} no se pudieron mover` : "")
+        );
+        return;
+      }
+
       setInfo(
         `${paths.length} imagen(es) ${permanent ? "borrada(s) permanentemente" : "enviada(s) a la papelera"} · registrado en el historial`
       );
@@ -161,6 +198,34 @@ export function GroupCard({ group, onDeleted }: Props) {
 
       {error && <div className="group-error">{error}</div>}
       {info && <div className="group-info">{info}</div>}
+
+      <div
+        className={`mover-row ${moverConservadas ? "activa" : ""}`}
+        title="Al borrar las seleccionadas, las imágenes que conservas de este grupo se moverán a la carpeta elegida"
+      >
+        <label>
+          <input
+            type="checkbox"
+            checked={moverConservadas}
+            onChange={(e) => setMoverConservadas(e.target.checked)}
+          />
+          Al borrar, mover las conservadas a otra carpeta
+        </label>
+        {moverConservadas && (
+          <>
+            <button className="btn" onClick={elegirDestino}>
+              📂 Elegir carpeta destino
+            </button>
+            {carpetaDestino ? (
+              <span className="destino" title={carpetaDestino}>
+                {carpetaDestino}
+              </span>
+            ) : (
+              <span className="destino aviso">⚠ Elegí una carpeta antes de borrar</span>
+            )}
+          </>
+        )}
+      </div>
 
       <div className="image-row">
         {group.images.map((img, idx) => (

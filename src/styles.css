@@ -210,6 +210,40 @@ body {
   white-space: nowrap;
 }
 
+.mover-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  padding: 6px 14px;
+  border-bottom: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.mover-row label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.mover-row.activa {
+  color: inherit;
+}
+
+.mover-row .destino {
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 320px;
+}
+
+.mover-row .destino.aviso {
+  color: #b45309;
+}
+
 .btn {
   border: 1px solid var(--border);
   background: var(--panel);

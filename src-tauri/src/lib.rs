@@ -95,6 +95,7 @@ mod desktop {
                 commands::image_diff,
                 commands::delete_to_trash,
                 commands::delete_permanent,
+                commands::mover_imagen,
                 commands::abrir_historial,
             ])
             .run(tauri::generate_context!())
