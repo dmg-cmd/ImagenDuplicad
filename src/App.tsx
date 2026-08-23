@@ -152,10 +152,15 @@ export default function App() {
     }
   };
 
-  const agregarExcluida = () => {
-    const ruta = nuevaExcluida.trim();
-    if (!ruta || excluidas.includes(ruta)) return;
-    const next = [...excluidas, ruta];
+  const agregarExcluida = async (ruta?: string) => {
+    let dir = ruta?.trim();
+    if (!dir) {
+      const elegida = await open({ directory: true, multiple: false });
+      if (typeof elegida !== "string") return;
+      dir = elegida;
+    }
+    if (excluidas.includes(dir)) return;
+    const next = [...excluidas, dir];
     setExcluidas(next);
     localStorage.setItem("carpetas-excluidas", JSON.stringify(next));
     setNuevaExcluida("");
@@ -259,15 +264,22 @@ export default function App() {
             para saltar carpetas que no quieres revisar. La lista se guarda y se aplica en cada escaneo.
           </p>
           <div className="excluidas-form">
+            <button
+              className="btn primary"
+              onClick={() => agregarExcluida()}
+              disabled={scanning}
+            >
+              📂 Elegir carpeta a excluir
+            </button>
             <input
               type="text"
               value={nuevaExcluida}
-              placeholder="/ruta/de/la/carpeta/a/excluir"
+              placeholder="…o pegá una ruta manualmente"
               onChange={(e) => setNuevaExcluida(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && agregarExcluida()}
             />
-            <button className="btn" onClick={agregarExcluida} disabled={!nuevaExcluida.trim()}>
-              Añadir
+            <button className="btn" onClick={() => agregarExcluida()} disabled={!nuevaExcluida.trim()}>
+              Añadir ruta
             </button>
           </div>
           {excluidas.length > 0 ? (
