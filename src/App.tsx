@@ -5,6 +5,7 @@ import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import type { DupGroup, ImageInfo, ScanProgress, ScanResult } from "./types";
 import { GroupCard } from "./components/GroupCard";
 import { formatBytes } from "./lib/format";
+import iconoApp from "./assets/icono-sf.jfif";
 
 type UIGroup = DupGroup & { id: string };
 
@@ -218,7 +219,10 @@ export default function App() {
   return (
     <div className="app">
       <header className="topbar">
-        <h1>Imagen Duplicada</h1>
+        <div className="topbar-brand">
+          <img src={iconoApp} alt="Icono Imagen Duplicada" className="app-logo" />
+          <h1>Imagen Duplicada</h1>
+        </div>
         <button onClick={pickFolder} disabled={scanning} className="btn primary">
           {scanning ? "Escaneando..." : "Escanear carpeta"}
         </button>
