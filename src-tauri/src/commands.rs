@@ -439,7 +439,8 @@ pub fn mover_imagen(
 }
 
 #[tauri::command]
-pub fn abrir_historial(app: tauri::AppHandle) -> Result<(), String> {    let file = history_file(&app)?;
+pub fn abrir_historial(app: tauri::AppHandle) -> Result<(), String> {
+    let file = history_file(&app)?;
     if !file.exists() {
         std::fs::write(&file, "fecha,modo,ruta\n")
             .map_err(|e| format!("No se pudo crear el historial: {e}"))?;
@@ -464,6 +465,37 @@ pub fn abrir_historial(app: tauri::AppHandle) -> Result<(), String> {    let fil
             .arg(&file)
             .spawn()
             .map_err(|e| format!("No se pudo abrir el historial: {e}"))?;
+    }
+    Ok(())
+}
+
+#[tauri::command]
+pub fn abrir_en_explorador(ruta: String) -> Result<(), String> {
+    let p = Path::new(&ruta);
+    if !p.exists() {
+        return Err(format!("La carpeta o archivo no existe: {ruta}"));
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(&ruta)
+            .spawn()
+            .map_err(|e| format!("No se pudo abrir el gestor de archivos: {e}"))?;
+    }
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("explorer")
+            .arg(&ruta)
+            .spawn()
+            .map_err(|e| format!("No se pudo abrir el explorador: {e}"))?;
+    }
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(&ruta)
+            .spawn()
+            .map_err(|e| format!("No se pudo abrir Finder: {e}"))?;
     }
     Ok(())
 }

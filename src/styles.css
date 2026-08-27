@@ -1161,3 +1161,166 @@ body {
   justify-content: center;
   padding: 20px 0;
 }
+
+/* --- Estilos para vista y revisión por carpetas --- */
+
+.btn-sm {
+  padding: 5px 10px;
+  font-size: 12px;
+  border-radius: 6px;
+}
+
+.carpetas-total {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 16px;
+  margin-bottom: 16px;
+  color: var(--text);
+}
+
+.carpetas-vacio {
+  text-align: center;
+  color: var(--muted);
+  padding: 40px 0;
+}
+
+.carpetas-tabla-container {
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  overflow-x: auto;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.carpetas-tabla {
+  width: 100%;
+  border-collapse: collapse;
+  text-align: left;
+  font-size: 13px;
+}
+
+.carpetas-tabla thead tr {
+  background: var(--subtle);
+  border-bottom: 1px solid var(--border);
+}
+
+.carpetas-tabla th {
+  padding: 12px 14px;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+}
+
+.carpetas-th-acciones {
+  text-align: right;
+  padding-right: 18px;
+}
+
+.carpetas-tabla tbody tr {
+  border-bottom: 1px solid var(--border);
+  transition: background 0.15s ease-in-out;
+}
+
+.carpetas-tabla tbody tr:last-child {
+  border-bottom: none;
+}
+
+.carpetas-tabla tbody tr:hover {
+  background: var(--subtle);
+}
+
+.carpetas-tabla td {
+  padding: 10px 14px;
+  vertical-align: middle;
+}
+
+.carpetas-dir {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 12px;
+  color: var(--text);
+  max-width: 420px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.carpetas-espacio {
+  font-weight: 600;
+  color: var(--primary);
+  font-variant-numeric: tabular-nums;
+}
+
+.carpetas-badge-dups,
+.carpetas-badge-grupos {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  background: var(--subtle);
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+
+.carpetas-acciones {
+  text-align: right;
+  white-space: nowrap;
+}
+
+.carpetas-acciones .btn {
+  margin-left: 6px;
+}
+
+/* Banner de revisión de una carpeta individual */
+
+.carpeta-revision-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.carpeta-revision-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--primary);
+  border-radius: var(--radius);
+  padding: 14px 18px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  flex-wrap: wrap;
+}
+
+.carpeta-revision-detalles {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 250px;
+}
+
+.carpeta-revision-etiqueta {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.carpeta-revision-ruta {
+  font-size: 14px;
+  color: var(--text);
+  word-break: break-all;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+.carpeta-revision-conteo {
+  font-size: 12px;
+  color: var(--primary);
+  font-weight: 500;
+}

@@ -70,6 +70,7 @@ export default function App() {
   const [panelExcluidas, setPanelExcluidas] = useState(false);
   const [nuevaExcluida, setNuevaExcluida] = useState("");
   const [vista, setVista] = useState<"grupos" | "carpetas">("grupos");
+  const [carpetaSeleccionada, setCarpetaSeleccionada] = useState<string | null>(null);
   const [tema, setTema] = useState<"claro" | "oscuro">(() => {
     const guardado = localStorage.getItem("tema");
     if (guardado === "oscuro" || guardado === "claro") return guardado;
@@ -130,6 +131,7 @@ export default function App() {
     setGroups([]);
     setSkipped(0);
     setProgress(null);
+    setCarpetaSeleccionada(null);
     deletedRef.current = new Set();
     try {
       const result = await invoke<ScanResult>("scan_folder", {
@@ -160,6 +162,14 @@ export default function App() {
       await invoke("cancel_scan");
     } catch {
       // ignorar
+    }
+  };
+
+  const abrirEnExplorador = async (ruta: string) => {
+    try {
+      await invoke("abrir_en_explorador", { ruta });
+    } catch (e) {
+      setError(String(e));
     }
   };
 
@@ -215,6 +225,13 @@ export default function App() {
       .map(([dir, v]) => ({ dir, ...v, grupos: v.grupos.size }))
       .sort((a, b) => b.recuperable - a.recuperable);
   }, [filtrados]);
+
+  const gruposCarpeta = useMemo(() => {
+    if (!carpetaSeleccionada) return [];
+    return filtrados.filter((g) =>
+      g.images.some((i) => i.dir === carpetaSeleccionada)
+    );
+  }, [filtrados, carpetaSeleccionada]);
 
   return (
     <div className="app">
@@ -424,6 +441,52 @@ export default function App() {
           filtrados.slice(0, visibleGroups).map((g) => (
             <GroupCard key={g.id} group={g} onDeleted={removeDeleted} />
           ))
+        ) : carpetaSeleccionada ? (
+          <div className="carpeta-revision-wrapper">
+            <div className="carpeta-revision-banner">
+              <button
+                className="btn"
+                onClick={() => setCarpetaSeleccionada(null)}
+                title="Volver a la lista de todas las carpetas"
+              >
+                ← Volver a carpetas
+              </button>
+              <div className="carpeta-revision-detalles">
+                <span className="carpeta-revision-etiqueta">Revisando carpeta:</span>
+                <strong className="carpeta-revision-ruta" title={carpetaSeleccionada}>
+                  📁 {carpetaSeleccionada}
+                </strong>
+                <span className="carpeta-revision-conteo">
+                  {gruposCarpeta.length} grupo(s) con duplicados
+                </span>
+              </div>
+              <button
+                className="btn"
+                onClick={() => abrirEnExplorador(carpetaSeleccionada)}
+                title="Abrir esta carpeta en el explorador de archivos del sistema"
+              >
+                📂 Abrir en explorador
+              </button>
+            </div>
+
+            {gruposCarpeta.length === 0 ? (
+              <div className="empty">
+                <p>¡Listo! No quedan imágenes duplicadas para revisar en esta carpeta.</p>
+                <button
+                  className="btn primary"
+                  onClick={() => setCarpetaSeleccionada(null)}
+                >
+                  ← Volver a la lista de carpetas
+                </button>
+              </div>
+            ) : (
+              <div className="groups">
+                {gruposCarpeta.map((g) => (
+                  <GroupCard key={g.id} group={g} onDeleted={removeDeleted} />
+                ))}
+              </div>
+            )}
+          </div>
         ) : porCarpeta.length === 0 ? (
           <p className="carpetas-vacio">
             No hay espacio recuperable que mostrar con los filtros actuales.
@@ -437,31 +500,53 @@ export default function App() {
                   porCarpeta.reduce((acc, c) => acc + c.recuperable, 0)
                 )}
               </strong>{" "}
-              repartidos en {porCarpeta.length} carpeta(s). Ve al modo{" "}
-              <strong>Por grupos</strong> para revisar y borrar.
+              repartidos en {porCarpeta.length} carpeta(s). Puedes revisar una carpeta específica con el botón <strong>Revisar</strong>.
             </div>
-            <table className="carpetas-tabla">
-              <thead>
-                <tr>
-                  <th>Carpeta</th>
-                  <th>Duplicados borrables</th>
-                  <th>Espacio recuperable</th>
-                  <th>Grupos</th>
-                </tr>
-              </thead>
-              <tbody>
-                {porCarpeta.map((c) => (
-                  <tr key={c.dir}>
-                    <td className="carpetas-dir" title={c.dir}>
-                      📁 {c.dir}
-                    </td>
-                    <td>{c.imagenes}</td>
-                    <td className="carpetas-espacio">{formatBytes(c.recuperable)}</td>
-                    <td>{c.grupos}</td>
+            <div className="carpetas-tabla-container">
+              <table className="carpetas-tabla">
+                <thead>
+                  <tr>
+                    <th>Carpeta</th>
+                    <th>Duplicados borrables</th>
+                    <th>Espacio recuperable</th>
+                    <th>Grupos</th>
+                    <th className="carpetas-th-acciones">Acciones</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {porCarpeta.map((c) => (
+                    <tr key={c.dir}>
+                      <td className="carpetas-dir" title={c.dir}>
+                        📁 {c.dir}
+                      </td>
+                      <td>
+                        <span className="carpetas-badge-dups">{c.imagenes}</span>
+                      </td>
+                      <td className="carpetas-espacio">{formatBytes(c.recuperable)}</td>
+                      <td>
+                        <span className="carpetas-badge-grupos">{c.grupos}</span>
+                      </td>
+                      <td className="carpetas-acciones">
+                        <button
+                          className="btn primary btn-sm"
+                          onClick={() => setCarpetaSeleccionada(c.dir)}
+                          title={`Revisar ${c.grupos} grupo(s) de duplicados en esta carpeta`}
+                        >
+                          🔍 Revisar
+                        </button>
+                        <button
+                          className="btn btn-sm"
+                          onClick={() => abrirEnExplorador(c.dir)}
+                          title="Abrir carpeta en el explorador de archivos"
+                        >
+                          📂 Abrir
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </>
         )}
       </main>

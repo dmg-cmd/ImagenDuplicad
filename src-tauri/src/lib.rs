@@ -97,6 +97,7 @@ mod desktop {
                 commands::delete_permanent,
                 commands::mover_imagen,
                 commands::abrir_historial,
+                commands::abrir_en_explorador,
             ])
             .run(tauri::generate_context!())
             .expect("error al ejecutar la app");
