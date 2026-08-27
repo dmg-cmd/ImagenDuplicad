@@ -23,30 +23,57 @@ En esa página, despliega la sección **Assets** y descarga el archivo de tu sis
 
 ---
 
+## ✨ Características principales
+
+- 🔍 **Doble motor de detección**:
+  - **Exactos (SHA-256)**: Identificación inmediata e infalible de duplicados idénticos byte a byte.
+  - **Probables (EXIF)**: Detección por cámara, dimensiones y fecha de toma, ideal para fotos recodificadas.
+  - **Similares (dHash)**: Búsqueda visual perceptual para encontrar imágenes idénticas aunque varíe el peso o resolución (con umbrales: Estricta, Normal, Laxa, Muy laxa).
+- 📁 **Gestión y vista por carpetas**:
+  - Resumen del espacio recuperable por carpeta.
+  - **Revisión individual**: Filtra y revisa únicamente los duplicados pertenecientes a una carpeta específica.
+  - **Abrir en explorador**: Acceso directo para abrir cualquier carpeta en el explorador de archivos de tu sistema operativo.
+- 🖼️ **Visor y comparador avanzado**:
+  - Vista previa a tamaño completo con navegación por teclado (`←`, `→`, `Esc`).
+  - Comparador lado a lado, modo cortina interactiva y mapa de diferencias visuales (diff).
+- 🗂️ **Organización flexible**:
+  - **Conservar la mejor**: Elige automáticamente la de mayor resolución o calidad.
+  - **Mover conservadas**: Opción para trasladar las mejores fotos a una carpeta destino organizada.
+  - **Carpetas excluidas**: Lista negra de directorios que no deben ser analizados.
+- 🗑️ **Borrado seguro y registro**:
+  - Envío a papelera de reciclaje o borrado permanente.
+  - **Historial**: Registro en archivo CSV de todas las operaciones realizadas.
+- 🌓 **Tema claro y oscuro**: Interfaz moderna adaptable a tus preferencias.
+
+---
+
 ## Guía de uso
 
 ### 1. Escanear una carpeta
 
-Abre la app y pulsa **"Escanear carpeta"**. Se analizan todas las imágenes de la carpeta y sus subcarpetas (JPEG, PNG, WebP, GIF, TIFF, BMP).
+Abre la app y pulsa **"Escanear carpeta"**. Se analizan recursivamente todas las imágenes (JPEG, PNG, WebP, GIF, TIFF, BMP). Opcionalmente puedes activar la casilla **"Buscar similares"** o gestionar **"Carpetas excluidas"**.
 
-### 2. Revisar los grupos
+### 2. Revisar los grupos o explorar por carpetas
 
-La app agrupa las duplicadas encontradas:
-
-- 🔵 **Grupo exacto**: copias idénticas byte a byte.
-- 🟠 **Grupo probable**: misma cámara, fecha y dimensiones, pero archivo distinto (recodificadas).
-
-Cada imagen muestra miniatura, nombre, dimensiones, peso y fecha.
+- **Por grupos**:
+  - 🔵 **Grupo exacto**: copias idénticas byte a byte.
+  - 🟠 **Grupo probable**: misma cámara, fecha y dimensiones (o similares visualmente).
+- **Por carpetas**:
+  - Consulta qué carpetas ocupan más espacio en duplicados.
+  - Haz clic en **"🔍 Revisar"** en cualquier carpeta para enfocarte solo en sus duplicados.
+  - Haz clic en **"📂 Abrir"** para ver la carpeta en el Explorador de Windows/Finder/gestor de archivos.
 
 ### 3. Verificar antes de borrar
 
-Haz clic en una miniatura para ver la imagen a tamaño completo (navega con `←` `→`, sale con `Esc`).
+- Haz clic en cualquier miniatura para verla en pantalla completa.
+- Usa la herramienta de **Comparar** para analizar diferencias con cortina o mapa de calor.
 
-### 4. Seleccionar y borrar
+### 4. Seleccionar, mover o borrar
 
-- Marca las que quieras eliminar, o usa **"Conservar la mejor"** para dejar automáticamente solo la de mayor resolución.
-- **"Borrar seleccionadas"** las envía a la papelera (recuperables).
-- **"Borrar permanentemente"** las elimina sin vuelta atrás.
+- Marca manualmente las imágenes que deseas eliminar o pulsa **"Conservar la mejor"**.
+- Si deseas organizar tus fotos limpias, activa **"Mover conservadas"** e indica la carpeta de destino.
+- Elige **"Borrar a papelera"** (seguro y recuperable) o **"Borrar permanente"**.
+- Consulta el registro de acciones desde el botón **"📄 Historial"**.
 
 ---
 
